@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Surfaces */
+  --color-canvas: #f6f3ed;
+  --color-surface: #ffffff;
+  --color-surface-soft: #fbf9f4;
+  --color-border: #e7e1d4;
+  --color-border-soft: #efe9dc;
+
+  /* Ink */
+  --color-ink: #24211b;
+  --color-ink-soft: #6b6355;
+  --color-ink-faint: #a29a89;
+
+  /* Accents: kept low-saturation / understated */
+  --color-sage: #4f7a5c;
+  --color-sage-soft: #e6ede4;
+  --color-amber: #a97a2f;
+  --color-amber-soft: #f4ead6;
+  --color-terracotta: #ae5b45;
+  --color-terracotta-soft: #f4e2da;
+  --color-fog: #736c60;
+  --color-fog-soft: #ecE8de;
+  --color-ocean: #3f6b74;
+  --color-ocean-soft: #e2ebec;
+
+  --shadow-soft: 0 1px 2px rgba(36, 33, 27, 0.04), 0 10px 30px -12px rgba(36, 33, 27, 0.12);
+  --shadow-soft-lg: 0 2px 4px rgba(36, 33, 27, 0.05), 0 24px 48px -16px rgba(36, 33, 27, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Trust Cues Mockup — Research Sidekick</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e2229;
+    --border: #2a2f3a;
+    --text: #e7e9ee;
+    --text-dim: #9aa1ae;
+    --accent: #6ea8fe;
+    --amber: #f0b429;
+    --green: #4ade80;
+    --red: #f87171;
+    --lock: #f0b429;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .panel {
+    width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    height: 780px;
+    overflow: hidden;
+    position: relative;
+  }
+  .panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-header .label { color: var(--text); }
+  .thread {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .context-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .chip {
+    font-size: 11px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-dim);
+  }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); } 
+  .chip .dot::after { content: ""; margin-left: 6px; } 
+  .chip[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    background: #000;
+    color: #fff;
+    font-size: 10px;
+    padding: 4px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+  }
+  .chip:hover::after { opacity: 1; }
+  .chip { position: relative; }
+  .user-msg {
+    align-self: flex-end;
+    background: #2a3550;
+    padding: 10px 14px;
+    border-radius: 12px 12px 2px 12px;
+    font-size: 13px;
+    max-width: 85%;
+  }
+
+  /* Stream of thought */
+  .thought-box {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+  .thought-summary {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    color: var(--text-dim);
+  }
+  .thought-summary .left { display: flex; align-items: center; gap: 8px; }
+  .thought-summary .caret { transition: transform 0.15s ease; font-size: 10px; }
+  .thought-box.open .caret { transform: rotate(90deg); }
+  .thought-steps {
+    display: none;
+    padding: 0 12px 10px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .thought-box.open .thought-steps { display: block; }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .step:last-child { border-bottom: none; }
+  .step .status {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-top: 1px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step .status svg { width: 8px; height: 8px; }
+  .status.done { background: rgba(74,222,128,0.15); color: var(--green); }
+  .status.running { background: rgba(110,168,254,0.15); color: var(--accent); animation: pulse 1.4s infinite; }
+  .status.pending { background: rgba(154,161,174,0.1); color: var(--text-dim); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .thinking-label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(110,168,254,0.12);
+    color: var(--accent);
+    border-radius: 5px;
+    padding: 2px 6px;
+  }
+  .src-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 14px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: rgba(154,161,174,0.16);
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .cite .src-badge { width: 16px; height: 12px; font-size: 7.5px; }
+  .icon-btn svg { width: 14px; height: 14px; }
+  .stop-square { width: 9px; height: 9px; background: #fff; border-radius: 2px; }
+  .step .step-text { color: var(--text); }
+  .step .step-sub { color: var(--text-dim); font-size: 11px; margin-top: 1px; }
+
+  .answer {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .cite {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(110,168,254,0.12);
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 1px 6px;
+    font-size: 11px;
+    margin-left: 2px;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+  .src-icon { font-size: 10px; }
+
+  .refs-toggle {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .refs-toggle .caret { font-size: 10px; transition: transform 0.15s ease; }
+  .refs-drawer { display: none; margin-top: 8px; }
+  .answer.drawer-open .refs-drawer { display: flex; flex-direction: column; gap: 6px; }
+  .answer .refs-drawer { display: none; }
+  .ref-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .ref-item .ref-icon { width: 18px; display: flex; align-items: center; justify-content: center; color: var(--text-dim); }
+  .ref-item .ref-icon svg { width: 14px; height: 14px; }
+  .ref-item .ref-meta { flex: 1; }
+  .ref-item .ref-title { color: var(--text); }
+  .ref-item .ref-sub { color: var(--text-dim); font-size: 10.5px; }
+  .ref-item.locked { opacity: 0.85; }
+  .ref-item.locked .ref-title { color: var(--text-dim); }
+  .lock-badge {
+    font-size: 10px;
+    background: rgba(240,180,41,0.14);
+    color: var(--lock);
+    border-radius: 6px;
+    padding: 2px 6px;
+    white-space: nowrap;
+  }
+
+  .input-row {
+    border-top: 1px solid var(--border);
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .input-box {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    flex-shrink: 0;
+    font-size: 13px;
+    cursor: default;
+  }
+  .icon-btn.mic { position: relative; }
+  .icon-btn.mic::after {
+    content: "voice · indicator only";
+    position: absolute;
+    bottom: 36px;
+    right: 0;
+    background: #000;
+    color: #fff;
+    font-size: 10px;
+    padding: 4px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .icon-btn.mic:hover::after { opacity: 1; }
+  .icon-btn.stop {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+  .caption {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-top: 10px;
+    max-width: 480px;
+  }
+  .tag-row { display: flex; gap: 6px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+  .wrap { display: flex; flex-direction: column; align-items: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="panel">
+  <div class="panel-header"><span class="label">Q3 Revenue Dip</span><span>Research panel</span></div>
+  <div class="thread">
+
+    <div class="context-chips">
+      <div class="chip" data-tooltip="Data source attached">
+        <span class="dot"></span> Revenue (Q3)
+      </div>
+      <div class="chip" data-tooltip="Data source attached">
+        <span class="dot"></span> Churn (Q3)
+      </div>
+      <div style="font-size: 12px; color: var(--text-dim); padding: 4px 0;">+ Add another chart to refine the question</div>
+    </div>
+
+    <div class="user-msg">Why did Q3 revenue dip? Is Churn related?</div>
+
+    <div class="thought-box open" onclick="this.classList.toggle('open')">
+      <div class="thought-summary">
+        <div class="left"><span class="thinking-label">Thinking</span><span>Cross-checking Enterprise renewals in APAC against Q3 churn cohort</span></div>
+        <span class="caret">▶</span>
+      </div>
+      <div class="thought-steps">
+        <div class="step">
+          <div class="status done"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><div class="step-text">Retrieved Revenue + Churn context</div><div class="step-sub">Both attached charts scoped for this question</div></div>
+        </div>
+        <div class="step">
+          <div class="status done"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><div class="step-text">Queried Salesforce — Enterprise renewals, APAC</div><div class="step-sub">Found 3 opportunities closed-lost in Q3</div></div>
+        </div>
+        <div class="step">
+          <div class="status done"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><div class="step-text">Checked #q3-close Slack thread</div><div class="step-sub">Referenced pricing discount discussion</div></div>
+        </div>
+        <div class="step">
+          <div class="status running"></div>
+          <div><div class="step-text">Drafting cross-metric summary…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="answer drawer-open">
+      Revenue dipped 6% in Q3, concentrated in Enterprise APAC renewals
+      <span class="cite"><span class="src-badge">SF</span>Salesforce</span>. This overlaps with a rise in
+      Churn for the same cohort <span class="cite"><span class="src-badge">CH</span>Churn chart</span>,
+      likely driven by a pricing discount removed mid-quarter
+      <span class="cite"><span class="src-badge">SL</span>Slack</span>.
+
+      <div class="refs-toggle" onclick="this.parentElement.classList.toggle('drawer-open')">
+        <span class="caret">▶</span> 3 sources referenced
+      </div>
+      <div class="refs-drawer">
+        <div class="ref-item">
+          <div class="ref-icon"><span class="src-badge">SF</span></div>
+          <div class="ref-meta"><div class="ref-title">Salesforce — APAC Enterprise Opportunities</div><div class="ref-sub">3 closed-lost deals, Q3</div></div>
+        </div>
+        <div class="ref-item">
+          <div class="ref-icon"><span class="src-badge">SL</span></div>
+          <div class="ref-meta"><div class="ref-title">#q3-close — Slack thread</div><div class="ref-sub">42 messages · pricing discount removal</div></div>
+        </div>
+        <div class="ref-item locked">
+          <div class="ref-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></div>
+          <div class="ref-meta"><div class="ref-title">Enterprise Master Agreement</div><div class="ref-sub">Legal · not permissioned</div></div>
+          <div class="lock-badge">No access</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="input-row">
+    <div class="icon-btn" title="Attach chart">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M11 5.5l-4.2 4.2a1.8 1.8 0 0 0 2.5 2.5l4.7-4.7a3 3 0 0 0-4.2-4.2L5.3 7.8"/></svg>
+    </div>
+    <div class="input-box">Ask a follow-up…</div>
+    <div class="icon-btn mic" title="Voice mode — indicator only">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M4 8a4 4 0 0 0 8 0" stroke-linecap="round"/><path d="M8 12v2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="icon-btn stop" title="Stop generation"><div class="stop-square"></div></div>
+  </div>
+</div>
+<div class="caption">Mockup only — click the "thinking" box or "3 sources referenced" to toggle. Not wired to the real prototype.</div>
+<div class="tag-row">
+  <span class="tag">Stream of thought</span>
+  <span class="tag">Multi-source citations</span>
+  <span class="tag">References drawer</span>
+  <span class="tag">Permission-aware lock</span>
+  <span class="tag">Stop control</span>
+  <span class="tag">Voice indicator (mic)</span>
+</div>
+</div>
+</body>
+</html>
