@@ -1,7 +1,7 @@
 import type { DrillDown } from '../../types';
 import { useResearch } from '../../state/ResearchContext';
 import { Breadcrumbs } from './Breadcrumbs';
-import { StageTimeline } from './StageTimeline';
+import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
 
 interface DrillDownThreadProps {
@@ -48,7 +48,9 @@ export function DrillDownThread({ turnId, node, path, activePath, trail, showMet
         depth={path.length}
         onBack={() => backToParent(turnId, path)}
       />
-      <StageTimeline stage={node.stage} />
+      {node.answer && (
+        <ThoughtTrace answer={node.answer} stage={node.stage} revealedFindingIds={node.revealedFindingIds} stopped={node.stopped} />
+      )}
       {node.answer && (
         <AnswerSection
           answer={node.answer}

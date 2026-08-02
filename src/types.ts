@@ -1,5 +1,13 @@
 export type MetricId = 'revenue' | 'grossMargin' | 'churn' | 'newArr' | 'activeCustomers';
 
+export type DimensionId = 'drillDownPath' | 'channelBreakdown';
+
+export type ContextId = MetricId | DimensionId;
+
+export function isMetricId(id: ContextId): id is MetricId {
+  return id !== 'drillDownPath' && id !== 'channelBreakdown';
+}
+
 export type ChartKind = 'sparkline' | 'donut' | 'barStrip' | 'steppedLine';
 
 export interface SeriesPoint {
@@ -83,8 +91,8 @@ export interface DrillDown {
 export interface ConversationTurn {
   id: string;
   question: string;
-  contextIds: MetricId[];
-  /** Subset of contextIds the agent judged relevant to this specific question. */
+  contextIds: ContextId[];
+  /** Subset of attached metrics the agent judged relevant to this specific question. */
   usedContextIds: MetricId[];
   stage: Stage;
   stopped?: boolean;
@@ -97,8 +105,14 @@ export interface ConversationTurn {
 }
 
 export interface ContextItem {
-  id: MetricId;
+  id: ContextId;
   title: string;
+}
+
+export interface ThoughtStep {
+  id: string;
+  findingId: string;
+  text: string;
 }
 
 export interface SavedCheck {

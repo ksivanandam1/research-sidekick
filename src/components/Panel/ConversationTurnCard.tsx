@@ -1,8 +1,9 @@
 import { CornerDownRight } from 'lucide-react';
 import type { ConversationTurn } from '../../types';
-import { getKpi } from '../../data/mockData';
+import { isMetricId } from '../../types';
+import { getContextItem, getKpi } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
-import { StageTimeline } from './StageTimeline';
+import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
 import { DrillDownThread } from './DrillDownThread';
 import { ContextChip } from './ContextChip';
@@ -13,21 +14,27 @@ function truncate(text: string, max: number): string {
 
 function TurnContextNote({ turn }: { turn: ConversationTurn }) {
   if (turn.contextIds.length === 0) return null;
-  const unused = turn.contextIds.filter((id) => !turn.usedContextIds.includes(id));
+  const unusedMetrics = turn.contextIds
+    .filter(isMetricId)
+    .filter((id) => !turn.usedContextIds.includes(id));
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap gap-1.5">
         {turn.contextIds.map((id) => (
-          <span key={id} className={unused.includes(id) ? 'opacity-40' : ''}>
-            <ContextChip title={getKpi(id).title} />
+          <span
+            key={id}
+            className={isMetricId(id) && unusedMetrics.includes(id) ? 'opacity-40' : ''}
+          >
+            <ContextChip title={getContextItem(id).title} />
           </span>
         ))}
       </div>
-      {unused.length > 0 && (
+      {unusedMetrics.length > 0 && turn.usedContextIds.length > 0 && (
         <p className="text-[11px] leading-relaxed text-ink-faint">
           Used {turn.usedContextIds.map((id) => getKpi(id).title).join(' + ')} for this answer —{' '}
-          {unused.map((id) => getKpi(id).title).join(', ')} didn't look directly relevant to the question.
+          {unusedMetrics.map((id) => getKpi(id).title).join(', ')} didn't look directly relevant to
+          the question.
         </p>
       )}
     </div>
@@ -50,7 +57,7 @@ export function ConversationTurnCard({ turn }: { turn: ConversationTurn }) {
 
       {!rootDrillDown && (
         <>
-          <StageTimeline stage={turn.stage} />
+          {turn.answer && <ThoughtTrace answer={turn.answer} stage={turn.stage} revealedFindingIds={turn.revealedFindingIds} stopped={turn.stopped} />}
 
           {turn.answer && (
             <AnswerSection

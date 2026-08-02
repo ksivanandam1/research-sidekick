@@ -14,11 +14,9 @@ export function FollowUpInput() {
     }
   }, [pendingPrefill, consumePrefill]);
 
-  const disabled = attachedContext.length === 0;
-
   function handleSubmit(question?: string) {
     const text = question ?? value;
-    if (!text.trim() || disabled) return;
+    if (!text.trim()) return;
     submitQuestion(text);
     setValue('');
   }
@@ -36,13 +34,16 @@ export function FollowUpInput() {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={disabled ? 'Attach a chart to ask a question…' : 'Ask a follow-up…'}
-          disabled={disabled}
-          className="flex-1 rounded-full border border-border-soft bg-surface-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-border focus:outline-none disabled:opacity-60"
+          placeholder={
+            attachedContext.length === 0
+              ? 'Ask about company performance…'
+              : 'Ask a follow-up…'
+          }
+          className="flex-1 rounded-full border border-border-soft bg-surface-soft px-3.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-border focus:outline-none"
         />
         <button
           type="submit"
-          disabled={disabled || !value.trim()}
+          disabled={!value.trim()}
           title="Send"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-surface transition-opacity disabled:opacity-30"
         >

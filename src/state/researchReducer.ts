@@ -1,15 +1,15 @@
 import type {
+  ContextId,
   ConversationTurn,
   DrillDown,
   Finding,
   FeedbackValue,
-  MetricId,
   SavedCheck,
   Stage,
 } from '../types';
 
 export interface SessionState {
-  attachedContext: MetricId[];
+  attachedContext: ContextId[];
   panelOpen: boolean;
   turns: ConversationTurn[];
   savedChecks: SavedCheck[];
@@ -27,8 +27,8 @@ export const initialSessionState: SessionState = {
 };
 
 export type SessionAction =
-  | { type: 'ADD_CONTEXT'; id: MetricId }
-  | { type: 'REMOVE_CONTEXT'; id: MetricId }
+  | { type: 'ADD_CONTEXT'; id: ContextId }
+  | { type: 'REMOVE_CONTEXT'; id: ContextId }
   | { type: 'SET_PANEL_OPEN'; open: boolean }
   | { type: 'CREATE_TURN'; turn: ConversationTurn }
   | { type: 'SET_TURN_STAGE'; turnId: string; stage: Stage }

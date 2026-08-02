@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import { getKpi } from '../../data/mockData';
+import { getContextItem } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 
 interface SuggestedQuestionsProps {
@@ -11,7 +11,9 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
 
   if (attachedContext.length === 0) return null;
 
-  const questions = Array.from(new Set(attachedContext.flatMap((id) => getKpi(id).suggestedQuestions))).slice(0, 3);
+  const questions = Array.from(
+    new Set(attachedContext.flatMap((id) => getContextItem(id).suggestedQuestions)),
+  ).slice(0, 3);
   if (questions.length === 0) return null;
 
   return (

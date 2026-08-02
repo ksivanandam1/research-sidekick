@@ -1,73 +1,137 @@
-import { useState } from 'react';
-import { Share2, Wand2 } from 'lucide-react';
-import { KPI_DEFINITIONS } from '../../data/mockData';
+import { useMemo, useState } from 'react';
+import { MoreHorizontal, Upload } from 'lucide-react';
+import type { MetricId } from '../../types';
+import { DIMENSION_DEFINITIONS } from '../../data/mockData';
+import {
+  DEFAULT_PRODUCT,
+  DEFAULT_TIMEFRAME,
+  resolveKpis,
+  type ProductFilterId,
+  type TimeframePreset,
+} from '../../data/dashboardFilters';
 import { useResearch } from '../../state/ResearchContext';
 import { KpiCard } from './KpiCard';
-import { DashboardSummaryModal } from './DashboardSummaryModal';
+import { DimensionCard } from './DimensionCard';
+import { TimeframeControl } from './TimeframeControl';
+import { ProductFilter } from './ProductFilter';
+import { FloatingResearchBar } from './FloatingResearchBar';
 
 const DASHBOARD_SHARE_TEASER =
-  'Q3 dashboard: Revenue and churn both moved in Q3, largely tied to a slowdown in APAC enterprise renewals. See the Insights Canvas for the full picture.';
+  'Q3 overview: Revenue and churn both moved in Q3, largely tied to a slowdown in APAC enterprise renewals. See the Overview for the full picture.';
+
+const KPI_TOOLTIPS: Record<MetricId, string> = {
+  revenue: 'Recognized revenue across all products for the selected timeframe.',
+  activeCustomers: 'Customers with at least one active subscription in the period.',
+  churn: 'Share of customers who cancelled or failed to renew in the period.',
+  grossMargin: 'Revenue minus cost of goods sold, as a percent of revenue.',
+  newArr: 'New annual recurring revenue booked in the selected timeframe.',
+};
+
+const ROW_ONE: MetricId[] = ['revenue', 'activeCustomers', 'churn'];
+const ROW_TWO: MetricId[] = ['grossMargin', 'newArr'];
 
 export function InsightsCanvas() {
   const { attachedContext, addContext, showToast } = useResearch();
-  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [timeframe, setTimeframe] = useState<TimeframePreset>(DEFAULT_TIMEFRAME);
+  const [product, setProduct] = useState<ProductFilterId>(DEFAULT_PRODUCT);
+  const [customFrom, setCustomFrom] = useState('2026-07-01');
+  const [customTo, setCustomTo] = useState('2026-09-30');
 
-  async function handleShare() {
+  const kpis = useMemo(() => resolveKpis(timeframe, product), [timeframe, product]);
+  const byId = useMemo(() => Object.fromEntries(kpis.map((k) => [k.id, k])) as Record<MetricId, (typeof kpis)[0]>, [kpis]);
+
+  async function handleExport() {
     try {
       await navigator.clipboard.writeText(DASHBOARD_SHARE_TEASER);
     } catch {
-      // Clipboard access may be unavailable in some environments — still confirm the share flow completed.
+      // Clipboard may be unavailable — still confirm the export flow completed.
     }
     showToast('Copied — ready to share.');
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-8 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Insights Canvas</h1>
-          <p className="mt-1 text-sm text-ink-soft">
-            Click <span className="font-medium text-ink">Add to chat</span> on any card to bring it into the
-            research panel — attach more than one to ask questions that span them.
-          </p>
-        </div>
+    <div className="relative mx-auto max-w-6xl px-4 pb-32 pt-8 sm:px-8">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <h1 className="text-xl font-semibold text-ink">Company performance</h1>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleShare}
-            title="Copy a shareable summary"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface-soft px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
+            onClick={handleExport}
+            title="Export a shareable summary"
+            className="inline-flex items-center gap-1.5 rounded-full bg-sage px-3.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
           >
-            <Share2 size={13} />
-            Share
+            <Upload size={13} />
+            Export
           </button>
           <button
             type="button"
-            onClick={() => setSummaryOpen(true)}
-            title="Generate an AI summary of this dashboard"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-surface transition-opacity hover:opacity-90"
+            title="More options"
+            aria-label="More options"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-sage text-white"
           >
-            <Wand2 size={13} />
-            Summarise
+            <MoreHorizontal size={16} />
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {KPI_DEFINITIONS.map((kpi) => (
-          <KpiCard
-            key={kpi.id}
-            kpi={kpi}
-            isAttached={attachedContext.includes(kpi.id)}
-            onAddToChat={() => addContext(kpi.id)}
-            onAskAboutAnomaly={() =>
-              kpi.anomaly && addContext(kpi.id, { prefill: kpi.anomaly.suggestedQuestion })
-            }
-          />
-        ))}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <TimeframeControl
+          value={timeframe}
+          onChange={setTimeframe}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomChange={(from, to) => {
+            setCustomFrom(from);
+            setCustomTo(to);
+          }}
+        />
+        <ProductFilter value={product} onChange={setProduct} />
       </div>
 
-      {summaryOpen && <DashboardSummaryModal onClose={() => setSummaryOpen(false)} />}
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {ROW_ONE.map((id) => (
+            <KpiCard
+              key={id}
+              kpi={byId[id]}
+              tooltip={KPI_TOOLTIPS[id]}
+              isAttached={attachedContext.includes(id)}
+              onAdd={() => addContext(id)}
+            />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {ROW_TWO.map((id) => (
+            <KpiCard
+              key={id}
+              kpi={byId[id]}
+              tooltip={KPI_TOOLTIPS[id]}
+              isAttached={attachedContext.includes(id)}
+              onAdd={() => addContext(id)}
+            />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <DimensionCard
+              definition={DIMENSION_DEFINITIONS[0]}
+              isAttached={attachedContext.includes('drillDownPath')}
+              onAdd={() => addContext('drillDownPath')}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <DimensionCard
+              definition={DIMENSION_DEFINITIONS[1]}
+              isAttached={attachedContext.includes('channelBreakdown')}
+              onAdd={() => addContext('channelBreakdown')}
+            />
+          </div>
+        </div>
+      </div>
+
+      <FloatingResearchBar />
     </div>
   );
 }

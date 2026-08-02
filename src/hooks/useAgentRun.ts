@@ -4,11 +4,14 @@ import type { Stage } from '../types';
 const STAGE_DELAY_MS: Record<Stage, number> = {
   idle: 0,
   analysing: 650,
-  retrieving: 1000,
-  citing: 550,
+  retrieving: 700,
+  citing: 0,
   drafting: 850,
   ready: 0,
 };
+
+/** Delay between revealing each evidence step during 'citing', for a staggered trace. */
+const STEP_STAGGER_MS = 260;
 
 const REVISION_DELAY_MS = 900;
 
@@ -59,9 +62,16 @@ export function useAgentRun() {
     if (cancelled()) return;
 
     onStage('citing');
-    onFindingsRevealed(evidenceFindingIds);
-    await sleep(STAGE_DELAY_MS.citing);
-    if (cancelled()) return;
+    if (evidenceFindingIds.length === 0) {
+      await sleep(STEP_STAGGER_MS);
+      if (cancelled()) return;
+    } else {
+      for (let i = 0; i < evidenceFindingIds.length; i += 1) {
+        onFindingsRevealed(evidenceFindingIds.slice(0, i + 1));
+        await sleep(STEP_STAGGER_MS);
+        if (cancelled()) return;
+      }
+    }
 
     onStage('drafting');
     onFindingsRevealed([...evidenceFindingIds, ...otherFindingIds]);

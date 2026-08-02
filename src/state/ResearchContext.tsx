@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
-import type { ConversationTurn, DrillDown, Finding, FeedbackValue, MetricId, SavedCheck } from '../types';
+import type { ContextId, ConversationTurn, DrillDown, Finding, FeedbackValue, MetricId, SavedCheck } from '../types';
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
   REVISED_PRICING_FINDING,
   determineUsedContext,
-  getKpi,
+  getContextItem,
   resolveAnswer,
   resolveDrillDown,
 } from '../data/mockData';
@@ -17,14 +17,14 @@ function nextId(prefix: string): string {
 }
 
 interface ResearchContextValue {
-  attachedContext: MetricId[];
+  attachedContext: ContextId[];
   panelOpen: boolean;
   turns: ConversationTurn[];
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
-  addContext: (id: MetricId, opts?: { prefill?: string }) => void;
-  removeContext: (id: MetricId) => void;
+  addContext: (id: ContextId, opts?: { prefill?: string }) => void;
+  removeContext: (id: ContextId) => void;
   openPanel: () => void;
   closePanel: () => void;
   consumePrefill: () => void;
@@ -54,19 +54,19 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
   const consumePrefill = useCallback(() => dispatch({ type: 'SET_PENDING_PREFILL', text: null }), []);
 
   const addContext = useCallback(
-    (id: MetricId, opts?: { prefill?: string }) => {
+    (id: ContextId, opts?: { prefill?: string }) => {
       dispatch({ type: 'ADD_CONTEXT', id });
       dispatch({ type: 'SET_PANEL_OPEN', open: true });
       if (opts?.prefill) {
         dispatch({ type: 'SET_PENDING_PREFILL', text: opts.prefill });
       }
-      const kpi = getKpi(id);
-      dispatch({ type: 'SHOW_TOAST', message: `Added ${kpi.title} to context.` });
+      const item = getContextItem(id);
+      dispatch({ type: 'SHOW_TOAST', message: `Added ${item.title} to context.` });
     },
     [],
   );
 
-  const removeContext = useCallback((id: MetricId) => dispatch({ type: 'REMOVE_CONTEXT', id }), []);
+  const removeContext = useCallback((id: ContextId) => dispatch({ type: 'REMOVE_CONTEXT', id }), []);
 
   const submitQuestion = useCallback(
     (question: string) => {

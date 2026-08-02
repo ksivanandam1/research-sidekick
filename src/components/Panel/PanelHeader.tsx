@@ -15,10 +15,7 @@ export function PanelHeader({ onClose, onShare, shareDisabled }: PanelHeaderProp
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-surface">
             <Sparkles size={14} />
           </div>
-          <div className="leading-tight">
-            <p className="text-sm font-semibold text-ink">Research panel</p>
-            <p className="text-[11px] text-ink-faint">Evidence, assumptions, and open questions — with sources</p>
-          </div>
+          <p className="text-sm font-semibold text-ink">Research panel</p>
         </div>
         <div className="flex items-center gap-1">
           <button

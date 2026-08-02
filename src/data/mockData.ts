@@ -1,4 +1,16 @@
-import type { Answer, ContextItem, Finding, KpiDefinition, MetricId, Source } from '../types';
+import type {
+  Answer,
+  ContextId,
+  ContextItem,
+  DimensionId,
+  Finding,
+  KpiDefinition,
+  MetricId,
+  Source,
+  SourceType,
+  ThoughtStep,
+} from '../types';
+import { isMetricId } from '../types';
 
 // ---------------------------------------------------------------------------
 // KPI definitions — the "Insights Canvas"
@@ -116,9 +128,49 @@ export function getKpi(id: MetricId): KpiDefinition {
   return kpi;
 }
 
-export function toContextItem(id: MetricId): ContextItem {
-  const kpi = getKpi(id);
-  return { id: kpi.id, title: kpi.title };
+export interface DimensionDefinition {
+  id: DimensionId;
+  title: string;
+  tooltip: string;
+  items: string[];
+  suggestedQuestions: string[];
+}
+
+export const DIMENSION_DEFINITIONS: DimensionDefinition[] = [
+  {
+    id: 'drillDownPath',
+    title: 'Drill down path',
+    tooltip: 'Plan tiers available across every product — Starter, Growth, and Pro.',
+    items: ['Starter', 'Growth', 'Pro'],
+    suggestedQuestions: ['How is performance split across Starter, Growth, and Pro?'],
+  },
+  {
+    id: 'channelBreakdown',
+    title: 'Channel breakdown',
+    tooltip: 'Where new and expansion ARR is coming from by motion.',
+    items: ['Self serve upgrade or outbound', 'Partner-assisted', 'Enterprise AE-led'],
+    suggestedQuestions: ['Which channel is driving the most ARR this quarter?'],
+  },
+];
+
+export function getDimension(id: DimensionId): DimensionDefinition {
+  const dim = DIMENSION_DEFINITIONS.find((d) => d.id === id);
+  if (!dim) throw new Error(`Unknown dimension: ${id}`);
+  return dim;
+}
+
+export function getContextItem(id: ContextId): ContextItem & { suggestedQuestions: string[] } {
+  if (isMetricId(id)) {
+    const kpi = getKpi(id);
+    return { id, title: kpi.title, suggestedQuestions: kpi.suggestedQuestions };
+  }
+  const dim = getDimension(id);
+  return { id, title: dim.title, suggestedQuestions: dim.suggestedQuestions };
+}
+
+export function toContextItem(id: ContextId): ContextItem {
+  const item = getContextItem(id);
+  return { id: item.id, title: item.title };
 }
 
 export function formatMetricValue(value: number, unit: KpiDefinition['unit']): string {
@@ -218,6 +270,33 @@ export function getSource(id: string): Source {
   const source = SOURCES[id];
   if (!source) throw new Error(`Unknown source: ${id}`);
   return source;
+}
+
+const QUERY_VERB: Record<SourceType, string> = {
+  financeDW: 'Queried the Finance data warehouse',
+  crm: 'Queried Salesforce',
+  chat: 'Checked Slack',
+  doc: 'Checked internal documents',
+  product: 'Queried product analytics',
+};
+
+/**
+ * Turns the evidence in an answer into a concrete "what did the agent check"
+ * trace — e.g. "Queried Salesforce — found APAC renewal rate dropped to 81%" —
+ * instead of an abstract stage label. Derived from the same scripted findings
+ * used elsewhere, so it stays consistent with the citations shown in the answer.
+ */
+export function buildThoughtSteps(answer: Answer): ThoughtStep[] {
+  return answer.findings
+    .filter((f) => f.kind === 'evidence' && f.sourceIds.length > 0)
+    .map((f) => {
+      const primarySource = getSource(f.sourceIds[0]);
+      return {
+        id: `step-${f.id}`,
+        findingId: f.id,
+        text: `${QUERY_VERB[primarySource.type]} — found ${f.text}`,
+      };
+    });
 }
 
 /** Every distinct source considered while building an answer, in first-seen order. */
@@ -406,9 +485,39 @@ export const APAC_RENEWAL_DRILLDOWN_ANSWER: Answer = {
       metricId: 'revenue',
       text: "Whether APAC's fiscal year-end (March) is creating a recurring Q3 approval bottleneck.",
       sourceIds: [],
+      investigateQuestion: "Is APAC's fiscal year-end creating a recurring Q3 approval bottleneck?",
     },
   ],
   nextCheck: "Check APAC renewal timing against APAC customers' own fiscal year-ends.",
+};
+
+export const APAC_FISCAL_YEAR_DRILLDOWN_ANSWER: Answer = {
+  summary: "Yes, most likely — APAC's fiscal year-end lines up with the approval delays, and this looks recurring rather than one-off.",
+  findings: [
+    {
+      id: 'drill-fy-e1',
+      kind: 'evidence',
+      metricId: 'revenue',
+      text: 'The two delayed accounts both run an April–March fiscal year, so Q3 (Jul–Sep) falls in their final budget-review quarter.',
+      sourceIds: ['srcSfdcPipeline'],
+    },
+    {
+      id: 'drill-fy-a1',
+      kind: 'assumption',
+      metricId: 'revenue',
+      text: 'Assuming other APAC accounts on the same fiscal calendar see similar Q3 slowdowns in prior years.',
+      confidence: 'low',
+      sourceIds: [],
+    },
+    {
+      id: 'drill-fy-u1',
+      kind: 'unknown',
+      metricId: 'revenue',
+      text: "Whether this pattern held in APAC's Q3 last year too, or is new to this year.",
+      sourceIds: [],
+    },
+  ],
+  nextCheck: "Pull APAC renewal timing for the same quarter last year to confirm this is a recurring pattern.",
 };
 
 export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
@@ -557,14 +666,16 @@ const METRIC_KEYWORDS: Record<MetricId, RegExp> = {
  * If the question names specific attached metrics, only those are used; otherwise
  * everything attached is treated as in scope.
  */
-export function determineUsedContext(question: string, contextIds: MetricId[]): MetricId[] {
-  if (contextIds.length <= 1) return contextIds;
-  const mentioned = contextIds.filter((id) => METRIC_KEYWORDS[id].test(question));
-  if (mentioned.length > 0 && mentioned.length < contextIds.length) return mentioned;
-  return contextIds;
+export function determineUsedContext(question: string, contextIds: ContextId[]): MetricId[] {
+  const metricIds = contextIds.filter(isMetricId);
+  if (metricIds.length <= 1) return metricIds;
+  const mentioned = metricIds.filter((id) => METRIC_KEYWORDS[id].test(question));
+  if (mentioned.length > 0 && mentioned.length < metricIds.length) return mentioned;
+  return metricIds;
 }
 
 export function resolveAnswer(contextIds: MetricId[]): Answer {
+  if (contextIds.length === 0) return REVENUE_DIP_ANSWER;
   const set = new Set(contextIds);
   if (set.has('revenue') && set.has('churn')) return REVENUE_CHURN_COMBINED_ANSWER;
   if (set.size === 1 && set.has('revenue')) return REVENUE_DIP_ANSWER;
@@ -573,6 +684,7 @@ export function resolveAnswer(contextIds: MetricId[]): Answer {
 }
 
 export function resolveDrillDown(question: string, parentMetricId: MetricId): Answer {
+  if (parentMetricId === 'revenue' && /fiscal year/i.test(question)) return APAC_FISCAL_YEAR_DRILLDOWN_ANSWER;
   if (parentMetricId === 'revenue' && /apac/i.test(question)) return APAC_RENEWAL_DRILLDOWN_ANSWER;
   if (parentMetricId === 'churn' && /smb/i.test(question)) return CHURN_SMB_DRILLDOWN_ANSWER;
   return genericDrillDownAnswer(question, parentMetricId);

@@ -12,8 +12,14 @@ const NAV_ITEMS = [
 const EXPANDED_WIDTH = 220;
 const COLLAPSED_WIDTH = 72;
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarProps {
+  /** When true (research panel open), nav collapses to icon rail to free horizontal space. */
+  forceCollapsed?: boolean;
+}
+
+export function Sidebar({ forceCollapsed = false }: SidebarProps) {
+  const [userCollapsed, setUserCollapsed] = useState(false);
+  const collapsed = forceCollapsed || userCollapsed;
 
   return (
     <motion.aside
@@ -68,14 +74,16 @@ export function Sidebar() {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setCollapsed((c) => !c)}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="absolute -right-3 top-7 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-ink-soft shadow-soft transition-colors hover:text-ink"
-      >
-        {collapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
-      </button>
+      {!forceCollapsed && (
+        <button
+          type="button"
+          onClick={() => setUserCollapsed((c) => !c)}
+          title={userCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute -right-3 top-7 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-ink-soft shadow-soft transition-colors hover:text-ink"
+        >
+          {userCollapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
+        </button>
+      )}
     </motion.aside>
   );
 }
