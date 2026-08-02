@@ -2,6 +2,7 @@ import { Bookmark, Compass } from 'lucide-react';
 import type { Answer, Finding, Stage } from '../../types';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { FindingItem } from './FindingItem';
+import { ReferencesList } from './ReferencesList';
 
 interface AnswerSectionProps {
   answer: Answer;
@@ -78,6 +79,8 @@ export function AnswerSection({
           </div>
         );
       })}
+
+      {isReady && <ReferencesList answer={answer} />}
 
       {isReady && answer.nextCheck && (
         <div className="flex items-start gap-2 rounded-xl border border-ocean-soft bg-ocean-soft/60 p-3">

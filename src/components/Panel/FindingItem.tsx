@@ -24,7 +24,11 @@ export function FindingItem({
   onDoesNotHold,
   onInvestigate,
 }: FindingItemProps) {
-  const [openSourceId, setOpenSourceId] = useState<string | null>(null);
+  const [openSourceIds, setOpenSourceIds] = useState<string[]>([]);
+
+  function toggleSource(id: string) {
+    setOpenSourceIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+  }
 
   return (
     <div className="rounded-xl border border-border-soft bg-surface p-3">
@@ -41,14 +45,20 @@ export function FindingItem({
             <CitationChip
               key={id}
               sourceId={id}
-              isActive={openSourceId === id}
-              onClick={() => setOpenSourceId(openSourceId === id ? null : id)}
+              isActive={openSourceIds.includes(id)}
+              onClick={() => toggleSource(id)}
             />
           ))}
         </div>
       )}
 
-      {openSourceId && <SourcePreview source={getSource(openSourceId)} />}
+      {openSourceIds.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {openSourceIds.map((id) => (
+            <SourcePreview key={id} source={getSource(id)} />
+          ))}
+        </div>
+      )}
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div>

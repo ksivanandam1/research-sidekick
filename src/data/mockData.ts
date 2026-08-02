@@ -37,6 +37,11 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     positiveIsGood: true,
     chartType: 'donut',
     series: series([63.5, 63.8, 64.0, 63.6, 63.1, 62.8, 62.0, 61.6, 61.4]),
+    anomaly: {
+      label: 'Q3 compression',
+      pointIndex: 8,
+      suggestedQuestion: 'What is driving gross margin down in Q3?',
+    },
     scope: 'Gross margin · company-wide · Q1–Q3 2026',
     suggestedQuestions: ['What is driving gross margin down?', 'How does margin compare to plan?'],
   },
@@ -66,6 +71,11 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     positiveIsGood: true,
     chartType: 'barStrip',
     series: series([1.4, 1.35, 1.5, 1.42, 1.38, 1.3, 1.25, 1.2, 1.18]),
+    anomaly: {
+      label: 'Q3 slowdown',
+      pointIndex: 8,
+      suggestedQuestion: 'What is driving the New ARR slowdown?',
+    },
     scope: 'New ARR booked · Q1–Q3 2026',
     suggestedQuestions: ['How is New ARR trending this quarter?', 'What is driving the New ARR slowdown?'],
   },
@@ -208,6 +218,20 @@ export function getSource(id: string): Source {
   const source = SOURCES[id];
   if (!source) throw new Error(`Unknown source: ${id}`);
   return source;
+}
+
+/** Every distinct source considered while building an answer, in first-seen order. */
+export function getAllSourcesForAnswer(answer: Answer): Source[] {
+  const seen = new Set<string>();
+  const sources: Source[] = [];
+  for (const finding of answer.findings) {
+    for (const id of finding.sourceIds) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      sources.push(getSource(id));
+    }
+  }
+  return sources;
 }
 
 // ---------------------------------------------------------------------------
@@ -518,6 +542,27 @@ export function genericDrillDownAnswer(question: string, metricId: MetricId): An
 // ---------------------------------------------------------------------------
 // Resolution helpers
 // ---------------------------------------------------------------------------
+
+const METRIC_KEYWORDS: Record<MetricId, RegExp> = {
+  revenue: /revenue/i,
+  churn: /churn/i,
+  grossMargin: /margin/i,
+  newArr: /\barr\b|bookings?/i,
+  activeCustomers: /active customers|customer count|seats?/i,
+};
+
+/**
+ * Mimics the agent scoping a question to the attached context that's actually
+ * relevant, rather than requiring the user to manually detach unrelated charts.
+ * If the question names specific attached metrics, only those are used; otherwise
+ * everything attached is treated as in scope.
+ */
+export function determineUsedContext(question: string, contextIds: MetricId[]): MetricId[] {
+  if (contextIds.length <= 1) return contextIds;
+  const mentioned = contextIds.filter((id) => METRIC_KEYWORDS[id].test(question));
+  if (mentioned.length > 0 && mentioned.length < contextIds.length) return mentioned;
+  return contextIds;
+}
 
 export function resolveAnswer(contextIds: MetricId[]): Answer {
   const set = new Set(contextIds);

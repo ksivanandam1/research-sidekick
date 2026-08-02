@@ -72,24 +72,38 @@ export interface DrillDown {
   parentFindingId: string;
   question: string;
   stage: Stage;
+  stopped?: boolean;
   answer?: Answer;
   revealedFindingIds: string[];
   revisingFindingIds: string[];
+  /** Nested investigations spawned from an open question within this drill-down. */
+  drillDowns: DrillDown[];
 }
 
 export interface ConversationTurn {
   id: string;
   question: string;
   contextIds: MetricId[];
+  /** Subset of contextIds the agent judged relevant to this specific question. */
+  usedContextIds: MetricId[];
   stage: Stage;
+  stopped?: boolean;
   answer?: Answer;
   revealedFindingIds: string[];
   drillDowns: DrillDown[];
-  activeDrillDownId: string | null;
+  /** Ids of drill-downs from root to the currently viewed nested thread, e.g. ['d1', 'd1-1']. */
+  activePath: string[];
   revisingFindingIds: string[];
 }
 
 export interface ContextItem {
   id: MetricId;
   title: string;
+}
+
+export interface SavedCheck {
+  id: string;
+  question: string;
+  createdAt: string;
+  metricIds: MetricId[];
 }

@@ -1,9 +1,18 @@
-import type { ConversationTurn, DrillDown, Finding, FeedbackValue, MetricId, Stage } from '../types';
+import type {
+  ConversationTurn,
+  DrillDown,
+  Finding,
+  FeedbackValue,
+  MetricId,
+  SavedCheck,
+  Stage,
+} from '../types';
 
 export interface SessionState {
   attachedContext: MetricId[];
   panelOpen: boolean;
   turns: ConversationTurn[];
+  savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
 }
@@ -12,6 +21,7 @@ export const initialSessionState: SessionState = {
   attachedContext: [],
   panelOpen: false,
   turns: [],
+  savedChecks: [],
   toast: null,
   pendingPrefill: null,
 };
@@ -23,25 +33,27 @@ export type SessionAction =
   | { type: 'CREATE_TURN'; turn: ConversationTurn }
   | { type: 'SET_TURN_STAGE'; turnId: string; stage: Stage }
   | { type: 'REVEAL_FINDINGS'; turnId: string; findingIds: string[] }
-  | { type: 'START_DRILLDOWN'; turnId: string; drillDown: DrillDown }
-  | { type: 'SET_DRILLDOWN_STAGE'; turnId: string; drillDownId: string; stage: Stage }
-  | { type: 'REVEAL_DRILLDOWN_FINDINGS'; turnId: string; drillDownId: string; findingIds: string[] }
-  | { type: 'SET_ACTIVE_DRILLDOWN'; turnId: string; drillDownId: string | null }
+  | { type: 'START_DRILLDOWN'; turnId: string; parentPath: string[]; drillDown: DrillDown }
+  | { type: 'SET_DRILLDOWN_STAGE'; turnId: string; path: string[]; stage: Stage }
+  | { type: 'REVEAL_DRILLDOWN_FINDINGS'; turnId: string; path: string[]; findingIds: string[] }
+  | { type: 'SET_ACTIVE_PATH'; turnId: string; path: string[] }
+  | { type: 'STOP_TURN'; turnId: string; path?: string[] }
   | {
       type: 'SET_FEEDBACK';
       turnId: string;
       findingId: string;
-      drillDownId?: string;
+      path?: string[];
       value: FeedbackValue;
     }
-  | { type: 'START_REVISION'; turnId: string; findingId: string; drillDownId?: string }
+  | { type: 'START_REVISION'; turnId: string; findingId: string; path?: string[] }
   | {
       type: 'APPLY_REVISION';
       turnId: string;
       findingId: string;
-      drillDownId?: string;
+      path?: string[];
       patch: Partial<Finding>;
     }
+  | { type: 'ADD_SAVED_CHECK'; check: SavedCheck }
   | { type: 'SHOW_TOAST'; message: string }
   | { type: 'DISMISS_TOAST' }
   | { type: 'SET_PENDING_PREFILL'; text: string | null };
@@ -54,6 +66,32 @@ function mapFindings(
   return findings.map((f) => (f.id === findingId ? updater(f) : f));
 }
 
+/** Recursively locates the node at `path` within a drill-down tree and applies `updater`. */
+function updateNodeAtPath(nodes: DrillDown[], path: string[], updater: (node: DrillDown) => DrillDown): DrillDown[] {
+  if (path.length === 0) return nodes;
+  const [head, ...rest] = path;
+  return nodes.map((node) => {
+    if (node.id !== head) return node;
+    if (rest.length === 0) return updater(node);
+    return { ...node, drillDowns: updateNodeAtPath(node.drillDowns, rest, updater) };
+  });
+}
+
+/** Inserts `child` into the node at `parentPath`, or at the root if `parentPath` is empty. */
+function insertChildAtPath(nodes: DrillDown[], parentPath: string[], child: DrillDown): DrillDown[] {
+  if (parentPath.length === 0) return [...nodes, child];
+  return updateNodeAtPath(nodes, parentPath, (node) => ({ ...node, drillDowns: [...node.drillDowns, child] }));
+}
+
+function updateNodeFindings(
+  node: DrillDown,
+  findingId: string,
+  updater: (finding: Finding) => Finding,
+): DrillDown {
+  if (!node.answer) return node;
+  return { ...node, answer: { ...node.answer, findings: mapFindings(node.answer.findings, findingId, updater) } };
+}
+
 function updateTurn(
   state: SessionState,
   turnId: string,
@@ -62,25 +100,6 @@ function updateTurn(
   return {
     ...state,
     turns: state.turns.map((t) => (t.id === turnId ? updater(t) : t)),
-  };
-}
-
-function updateFindingInTurnOrDrillDown(
-  turn: ConversationTurn,
-  findingId: string,
-  drillDownId: string | undefined,
-  updater: (finding: Finding) => Finding,
-): ConversationTurn {
-  if (!drillDownId) {
-    if (!turn.answer) return turn;
-    return { ...turn, answer: { ...turn.answer, findings: mapFindings(turn.answer.findings, findingId, updater) } };
-  }
-  return {
-    ...turn,
-    drillDowns: turn.drillDowns.map((d) => {
-      if (d.id !== drillDownId || !d.answer) return d;
-      return { ...d, answer: { ...d.answer, findings: mapFindings(d.answer.findings, findingId, updater) } };
-    }),
   };
 }
 
@@ -114,71 +133,92 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
     case 'START_DRILLDOWN': {
       return updateTurn(state, action.turnId, (t) => ({
         ...t,
-        drillDowns: [...t.drillDowns, action.drillDown],
-        activeDrillDownId: action.drillDown.id,
+        drillDowns: insertChildAtPath(t.drillDowns, action.parentPath, action.drillDown),
+        activePath: [...action.parentPath, action.drillDown.id],
       }));
     }
     case 'SET_DRILLDOWN_STAGE': {
       return updateTurn(state, action.turnId, (t) => ({
         ...t,
-        drillDowns: t.drillDowns.map((d) => (d.id === action.drillDownId ? { ...d, stage: action.stage } : d)),
+        drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) => ({ ...d, stage: action.stage })),
       }));
     }
     case 'REVEAL_DRILLDOWN_FINDINGS': {
       return updateTurn(state, action.turnId, (t) => ({
         ...t,
-        drillDowns: t.drillDowns.map((d) =>
-          d.id === action.drillDownId ? { ...d, revealedFindingIds: action.findingIds } : d,
-        ),
+        drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) => ({
+          ...d,
+          revealedFindingIds: action.findingIds,
+        })),
       }));
     }
-    case 'SET_ACTIVE_DRILLDOWN': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, activeDrillDownId: action.drillDownId }));
+    case 'SET_ACTIVE_PATH': {
+      return updateTurn(state, action.turnId, (t) => ({ ...t, activePath: action.path }));
+    }
+    case 'STOP_TURN': {
+      if (!action.path || action.path.length === 0) {
+        return updateTurn(state, action.turnId, (t) => ({ ...t, stopped: true }));
+      }
+      return updateTurn(state, action.turnId, (t) => ({
+        ...t,
+        drillDowns: updateNodeAtPath(t.drillDowns, action.path!, (d) => ({ ...d, stopped: true })),
+      }));
     }
     case 'SET_FEEDBACK': {
-      return updateTurn(state, action.turnId, (t) =>
-        updateFindingInTurnOrDrillDown(t, action.findingId, action.drillDownId, (f) => ({
-          ...f,
-          feedback: action.value,
-        })),
-      );
+      return updateTurn(state, action.turnId, (t) => {
+        if (!action.path || action.path.length === 0) {
+          if (!t.answer) return t;
+          return {
+            ...t,
+            answer: { ...t.answer, findings: mapFindings(t.answer.findings, action.findingId, (f) => ({ ...f, feedback: action.value })) },
+          };
+        }
+        return {
+          ...t,
+          drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) =>
+            updateNodeFindings(d, action.findingId, (f) => ({ ...f, feedback: action.value })),
+          ),
+        };
+      });
     }
     case 'START_REVISION': {
       return updateTurn(state, action.turnId, (t) => {
-        if (!action.drillDownId) {
+        if (!action.path || action.path.length === 0) {
           return { ...t, revisingFindingIds: addRevisingId(t.revisingFindingIds, action.findingId) };
         }
         return {
           ...t,
-          drillDowns: t.drillDowns.map((d) =>
-            d.id === action.drillDownId
-              ? { ...d, revisingFindingIds: addRevisingId(d.revisingFindingIds, action.findingId) }
-              : d,
-          ),
+          drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) => ({
+            ...d,
+            revisingFindingIds: addRevisingId(d.revisingFindingIds, action.findingId),
+          })),
         };
       });
     }
     case 'APPLY_REVISION': {
       return updateTurn(state, action.turnId, (t) => {
-        const withPatch = updateFindingInTurnOrDrillDown(t, action.findingId, action.drillDownId, (f) => ({
-          ...f,
-          ...action.patch,
-        }));
-        if (!action.drillDownId) {
+        if (!action.path || action.path.length === 0) {
+          if (!t.answer) return t;
           return {
-            ...withPatch,
-            revisingFindingIds: withPatch.revisingFindingIds.filter((id) => id !== action.findingId),
+            ...t,
+            answer: {
+              ...t.answer,
+              findings: mapFindings(t.answer.findings, action.findingId, (f) => ({ ...f, ...action.patch })),
+            },
+            revisingFindingIds: t.revisingFindingIds.filter((id) => id !== action.findingId),
           };
         }
         return {
-          ...withPatch,
-          drillDowns: withPatch.drillDowns.map((d) =>
-            d.id === action.drillDownId
-              ? { ...d, revisingFindingIds: d.revisingFindingIds.filter((id) => id !== action.findingId) }
-              : d,
-          ),
+          ...t,
+          drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) => ({
+            ...updateNodeFindings(d, action.findingId, (f) => ({ ...f, ...action.patch })),
+            revisingFindingIds: d.revisingFindingIds.filter((id) => id !== action.findingId),
+          })),
         };
       });
+    }
+    case 'ADD_SAVED_CHECK': {
+      return { ...state, savedChecks: [action.check, ...state.savedChecks] };
     }
     case 'SHOW_TOAST': {
       toastCounter += 1;

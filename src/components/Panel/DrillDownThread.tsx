@@ -6,30 +6,75 @@ import { AnswerSection } from './AnswerSection';
 
 interface DrillDownThreadProps {
   turnId: string;
-  drillDown: DrillDown;
-  parentLabel: string;
-  onBack: () => void;
+  node: DrillDown;
+  path: string[];
+  activePath: string[];
+  trail: string[];
   showMetricTags: boolean;
 }
 
-export function DrillDownThread({ turnId, drillDown, parentLabel, onBack, showMetricTags }: DrillDownThreadProps) {
-  const { giveFeedback, markDoesNotHold } = useResearch();
+/**
+ * Recursively renders the currently active drill-down node. If a deeper node
+ * is active (per `activePath`), it renders that nested thread instead of this
+ * node's own answer — giving unlimited nesting depth while keeping each level's
+ * breadcrumb trail and depth indicator intact.
+ */
+export function DrillDownThread({ turnId, node, path, activePath, trail, showMetricTags }: DrillDownThreadProps) {
+  const { giveFeedback, markDoesNotHold, startDrillDown, backToParent, reopenPath } = useResearch();
+
+  const nextId = activePath[path.length];
+  const activeChild = nextId ? node.drillDowns.find((d) => d.id === nextId) : undefined;
+
+  if (activeChild) {
+    return (
+      <DrillDownThread
+        turnId={turnId}
+        node={activeChild}
+        path={[...path, activeChild.id]}
+        activePath={activePath}
+        trail={[...trail, node.question]}
+        showMetricTags={showMetricTags}
+      />
+    );
+  }
+
+  const otherDrillDowns = node.drillDowns;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border-soft bg-surface-soft p-3">
-      <Breadcrumbs parentLabel={parentLabel} activeLabel={drillDown.question} onBack={onBack} />
-      <StageTimeline stage={drillDown.stage} />
-      {drillDown.answer && (
+      <Breadcrumbs
+        trail={trail}
+        activeLabel={node.question}
+        depth={path.length}
+        onBack={() => backToParent(turnId, path)}
+      />
+      <StageTimeline stage={node.stage} />
+      {node.answer && (
         <AnswerSection
-          answer={drillDown.answer}
-          stage={drillDown.stage}
-          revealedFindingIds={drillDown.revealedFindingIds}
-          revisingFindingIds={drillDown.revisingFindingIds}
+          answer={node.answer}
+          stage={node.stage}
+          revealedFindingIds={node.revealedFindingIds}
+          revisingFindingIds={node.revisingFindingIds}
           showMetricTags={showMetricTags}
-          onThumbsUp={(findingId) => giveFeedback(turnId, findingId, 'up', drillDown.id)}
-          onDoesNotHold={(findingId) => markDoesNotHold(turnId, findingId, drillDown.id)}
-          onInvestigate={() => {}}
+          onThumbsUp={(findingId) => giveFeedback(turnId, findingId, 'up', path)}
+          onDoesNotHold={(findingId) => markDoesNotHold(turnId, findingId, path)}
+          onInvestigate={(finding) => startDrillDown(turnId, finding, path)}
         />
+      )}
+
+      {otherDrillDowns.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {otherDrillDowns.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => reopenPath(turnId, [...path, d.id])}
+              className="inline-flex items-center gap-1 rounded-full border border-border-soft bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
+            >
+              {d.question.length > 42 ? `${d.question.slice(0, 41)}…` : d.question}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
