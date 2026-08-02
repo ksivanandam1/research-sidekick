@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Check, Info, MoreVertical, Plus } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Info, Minus, MoreVertical, Plus } from 'lucide-react';
 import type { KpiDefinition } from '../../types';
 import { formatMetricValue } from '../../data/mockData';
 import { Sparkline } from './charts/Sparkline';
@@ -11,6 +11,7 @@ interface KpiCardProps {
   tooltip: string;
   isAttached: boolean;
   onAdd: () => void;
+  onRemove: () => void;
 }
 
 const CHART_COLOR: Record<KpiDefinition['id'], string> = {
@@ -21,6 +22,20 @@ const CHART_COLOR: Record<KpiDefinition['id'], string> = {
   activeCustomers: 'text-sage',
 };
 
+function DeltaBadge({ kpi, compact = false }: { kpi: KpiDefinition; compact?: boolean }) {
+  const isGood = kpi.deltaPct >= 0 === kpi.positiveIsGood;
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-full font-medium ${
+        compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-1.5 py-0.5 text-xs'
+      } ${isGood ? 'bg-sage-soft text-sage' : 'bg-terracotta-soft text-terracotta'}`}
+    >
+      {kpi.deltaPct >= 0 ? <ArrowUpRight size={compact ? 10 : 12} /> : <ArrowDownRight size={compact ? 10 : 12} />}
+      {Math.abs(kpi.deltaPct).toFixed(1)}%
+    </span>
+  );
+}
+
 function Chart({ kpi }: { kpi: KpiDefinition }) {
   const color = CHART_COLOR[kpi.id];
   switch (kpi.chartType) {
@@ -28,13 +43,16 @@ function Chart({ kpi }: { kpi: KpiDefinition }) {
       return <Sparkline points={kpi.series} colorClassName={color} />;
     case 'donut':
       return (
-        <div className="flex items-center gap-3">
-          <DonutProgress percent={kpi.currentValue} colorClassName={color} />
-          <p className="text-xs leading-snug text-ink-soft">
-            of margin
-            <br />
-            retained
-          </p>
+        <div className="flex flex-col items-center gap-2 py-1">
+          <DonutProgress percent={kpi.currentValue} colorClassName={color} size={120}>
+            <p className="text-lg font-semibold leading-none text-ink">
+              {formatMetricValue(kpi.currentValue, kpi.unit)}
+            </p>
+            <div className="mt-1.5">
+              <DeltaBadge kpi={kpi} compact />
+            </div>
+          </DonutProgress>
+          <p className="text-[11px] text-ink-faint">of margin retained</p>
         </div>
       );
     case 'barStrip':
@@ -47,8 +65,8 @@ function Chart({ kpi }: { kpi: KpiDefinition }) {
 const iconBtn =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-soft bg-surface text-ink-soft transition-colors hover:border-border hover:text-ink';
 
-export function KpiCard({ kpi, tooltip, isAttached, onAdd }: KpiCardProps) {
-  const isGood = kpi.deltaPct >= 0 === kpi.positiveIsGood;
+export function KpiCard({ kpi, tooltip, isAttached, onAdd, onRemove }: KpiCardProps) {
+  const isDonut = kpi.chartType === 'donut';
 
   return (
     <div className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-soft transition-shadow hover:shadow-soft-lg">
@@ -62,11 +80,11 @@ export function KpiCard({ kpi, tooltip, isAttached, onAdd }: KpiCardProps) {
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
-            onClick={onAdd}
-            title={isAttached ? 'Added to chat context' : 'Add to chat'}
+            onClick={isAttached ? onRemove : onAdd}
+            title={isAttached ? 'Remove from chat context' : 'Add to chat'}
             className={`${iconBtn} ${isAttached ? 'border-sage-soft bg-sage-soft text-sage' : ''}`}
           >
-            {isAttached ? <Check size={14} /> : <Plus size={14} />}
+            {isAttached ? <Minus size={14} /> : <Plus size={14} />}
           </button>
           <button type="button" className={iconBtn} title="More options" aria-label="More options">
             <MoreVertical size={14} />
@@ -74,17 +92,12 @@ export function KpiCard({ kpi, tooltip, isAttached, onAdd }: KpiCardProps) {
         </div>
       </div>
 
-      <div className="flex items-baseline gap-2">
-        <p className="text-2xl font-semibold text-ink">{formatMetricValue(kpi.currentValue, kpi.unit)}</p>
-        <span
-          className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium ${
-            isGood ? 'bg-sage-soft text-sage' : 'bg-terracotta-soft text-terracotta'
-          }`}
-        >
-          {kpi.deltaPct >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-          {Math.abs(kpi.deltaPct).toFixed(1)}%
-        </span>
-      </div>
+      {!isDonut && (
+        <div className="flex items-baseline gap-2">
+          <p className="text-2xl font-semibold text-ink">{formatMetricValue(kpi.currentValue, kpi.unit)}</p>
+          <DeltaBadge kpi={kpi} />
+        </div>
+      )}
 
       <Chart kpi={kpi} />
 

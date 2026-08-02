@@ -3,7 +3,8 @@ import { ArrowUp, ImagePlus, Mic, Sparkles } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 
 const PLACEHOLDER = 'Get the latest insights on the revenue dip this quarter.';
-const SUMMARISE_QUESTION = 'Summarise the Company performance dashboard for this quarter.';
+const SUMMARISE_QUESTION =
+  'Why did revenue dip in Q3, and where does the miss actually live by tier and channel?';
 
 export function FloatingResearchBar() {
   const { panelOpen, openPanel, submitQuestion } = useResearch();

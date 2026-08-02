@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ArrowRight, RefreshCcw } from 'lucide-react';
 import type { Finding } from '../../types';
 import { getKpi, getSource } from '../../data/mockData';
-import { Badge } from './Badge';
 import { CitationChip } from './CitationChip';
 import { SourcePreview } from './SourcePreview';
 import { FeedbackControls } from './FeedbackControls';
@@ -32,12 +31,13 @@ export function FindingItem({
 
   return (
     <div className="rounded-xl border border-border-soft bg-surface p-3">
-      <div className="flex items-center gap-2">
-        <Badge kind={finding.kind} confidence={finding.confidence} />
-        {showMetricTag && <span className="text-[11px] font-medium text-ink-faint">{getKpi(finding.metricId).title}</span>}
-      </div>
+      {showMetricTag && (
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="text-[11px] font-medium text-ink-faint">{getKpi(finding.metricId).title}</span>
+        </div>
+      )}
 
-      <p className="mt-1.5 text-sm leading-relaxed text-ink">{finding.text}</p>
+      <p className="text-sm leading-relaxed text-ink">{finding.text}</p>
 
       {finding.sourceIds.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">

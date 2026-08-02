@@ -28,15 +28,28 @@ export function Sidebar({ forceCollapsed = false }: SidebarProps) {
       transition={{ type: 'spring', stiffness: 340, damping: 34 }}
       className="relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-surface px-3 py-5"
     >
-      <div className={`flex items-center gap-2 pb-6 ${collapsed ? 'justify-center' : 'px-2'}`}>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ink text-surface">
-          <ShieldCheck size={16} strokeWidth={2.25} />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold text-ink">Tomoro</p>
-            <p className="truncate text-[11px] text-ink-faint">Insights</p>
+      <div className={`mb-6 flex items-start ${collapsed ? 'flex-col items-center gap-2' : 'justify-between gap-2'}`}>
+        <div className={`flex w-fit items-center gap-2 ${collapsed ? '' : 'px-2'}`}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-ink text-surface">
+            <ShieldCheck size={16} strokeWidth={2.25} />
           </div>
+          {!collapsed && (
+            <div className="w-fit leading-tight">
+              <p className="text-sm font-semibold text-ink">Tomoro</p>
+              <p className="text-[11px] text-ink-faint">Insights</p>
+            </div>
+          )}
+        </div>
+
+        {!forceCollapsed && (
+          <button
+            type="button"
+            onClick={() => setUserCollapsed((c) => !c)}
+            title={userCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-ink-soft shadow-soft transition-colors hover:text-ink"
+          >
+            {userCollapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
+          </button>
         )}
       </div>
 
@@ -73,17 +86,6 @@ export function Sidebar({ forceCollapsed = false }: SidebarProps) {
           </div>
         )}
       </div>
-
-      {!forceCollapsed && (
-        <button
-          type="button"
-          onClick={() => setUserCollapsed((c) => !c)}
-          title={userCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="absolute -right-3 top-7 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-ink-soft shadow-soft transition-colors hover:text-ink"
-        >
-          {userCollapsed ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
-        </button>
-      )}
     </motion.aside>
   );
 }

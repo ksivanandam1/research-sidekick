@@ -1,5 +1,6 @@
 import type {
   Answer,
+  ClarifyingRound,
   ContextId,
   ContextItem,
   DimensionId,
@@ -27,17 +28,17 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     id: 'revenue',
     title: 'Revenue',
     unit: 'currency',
-    currentValue: 4.52,
-    deltaPct: -6.4,
+    currentValue: 2.1,
+    deltaPct: -12.0,
     positiveIsGood: true,
     chartType: 'sparkline',
-    series: series([4.1, 4.22, 4.35, 4.48, 4.6, 4.83, 4.7, 4.4, 4.52]),
+    series: series([2.05, 2.1, 2.15, 2.2, 2.28, 2.35, 2.38, 2.25, 2.1]),
     anomaly: {
       label: 'Q3 dip',
-      pointIndex: 7,
+      pointIndex: 8,
       suggestedQuestion: 'Why did revenue dip in Q3?',
     },
-    scope: 'Revenue by region · Q1–Q3 2026',
+    scope: 'Subscription revenue · mid-market retail · Q1–Q3 2026',
     suggestedQuestions: ['Why did revenue dip in Q3?', 'How does Q3 compare to plan?'],
   },
   {
@@ -95,12 +96,12 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     id: 'activeCustomers',
     title: 'Active Customers',
     unit: 'count',
-    currentValue: 1842,
+    currentValue: 2200,
     deltaPct: 2.3,
     positiveIsGood: true,
     chartType: 'steppedLine',
-    series: series([1700, 1720, 1745, 1760, 1780, 1800, 1815, 1828, 1842]),
-    scope: 'Active customers · all regions · Q1–Q3 2026',
+    series: series([2050, 2080, 2100, 2120, 2140, 2160, 2175, 2190, 2200]),
+    scope: 'Active subscribers · Starter / Growth / Pro · Q1–Q3 2026',
     suggestedQuestions: ['How is Active Customers trending this quarter?'],
   },
 ];
@@ -112,20 +113,27 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
 export const DASHBOARD_NARRATIVE_TITLE = 'Q3 dashboard summary';
 
 export const DASHBOARD_NARRATIVE: string[] = [
-  "Revenue dipped 6.4% in Q3, driven mainly by a slowdown in APAC enterprise renewals — the renewal rate fell from 92% to 81%, and two enterprise deals worth ~$1.2M slipped from Q3 into Q4.",
-  "Customer churn moved in the same direction, rising from 3.2% to 4.1% quarter-on-quarter. That increase is concentrated in Enterprise accounts (SMB churn held flat at 2.8%), and the top logged reason was budget/approval delays rather than product dissatisfaction — consistent with the renewal slowdown above.",
-  "Gross margin compressed slightly, from 62.8% to 61.4%, overlapping a 12% promotional discount that ran on APAC Enterprise renewals from June through August.",
-  "New ARR bookings fell 9.2% to $1.18M, which tracks with a quieter renewal and pipeline environment this quarter.",
-  "Active Customers still grew 2.3% to 1,842, though — so the dip looks concentrated in one region and segment rather than a broad-based demand problem.",
+  'Q3 subscription revenue came in at $2.1M against a $2.4M forecast — a 12% miss. Versus Q2 that is also a 12% decline, but versus Q3 last year revenue is only down ~3%, which softens the panic and points partly toward seasonality rather than a sudden collapse.',
+  'Across ~2,200 mid-market retail subscribers on Starter, Growth, and Pro, the Starter and Growth tiers are roughly flat. The dip lives in Pro — our highest-value, sales-assisted segment — which is down ~34% QoQ.',
+  'Inside Pro, self-serve upgrades are flat. New Pro deals sourced by the outbound team targeting larger retail chains have nearly halved. That is a volume problem (fewer deals closing), not a value problem (deal size and discounting look stable).',
+  'Gross margin and New ARR move in the same direction as the quieter Pro outbound pipeline; Active Customers still grew modestly, so the base is not eroding across the board.',
 ];
 
 export const DASHBOARD_NEXT_STEP =
-  'Confirm the two delayed APAC deals close in Q4, and keep an eye on whether Enterprise churn in that same cohort continues into next quarter.';
+  'Review outbound Pro pipeline coverage for Q4 and confirm whether deal count recovers without discounting the ACV.';
 
 export function getKpi(id: MetricId): KpiDefinition {
   const kpi = KPI_DEFINITIONS.find((k) => k.id === id);
   if (!kpi) throw new Error(`Unknown KPI: ${id}`);
   return kpi;
+}
+
+export interface CompareBarRow {
+  label: string;
+  /** Current quarter value in $M */
+  actual: number;
+  /** Prior quarter value in $M */
+  prior: number;
 }
 
 export interface DimensionDefinition {
@@ -134,22 +142,37 @@ export interface DimensionDefinition {
   tooltip: string;
   items: string[];
   suggestedQuestions: string[];
+  /** Horizontal actual-vs-prior bars (Q3 vs Q2). */
+  compareBars?: CompareBarRow[];
 }
 
 export const DIMENSION_DEFINITIONS: DimensionDefinition[] = [
   {
     id: 'drillDownPath',
     title: 'Drill down path',
-    tooltip: 'Plan tiers available across every product — Starter, Growth, and Pro.',
+    tooltip: 'Plan tier mix this quarter vs last — Pro volume is down.',
     items: ['Starter', 'Growth', 'Pro'],
-    suggestedQuestions: ['How is performance split across Starter, Growth, and Pro?'],
+    suggestedQuestions: [
+      'Why did Pro diminish this quarter compared to last?',
+      'How is performance split across Starter, Growth, and Pro?',
+    ],
+    compareBars: [
+      { label: 'Starter', actual: 0.48, prior: 0.49 },
+      { label: 'Growth', actual: 0.72, prior: 0.74 },
+      { label: 'Pro', actual: 0.9, prior: 1.36 },
+    ],
   },
   {
     id: 'channelBreakdown',
     title: 'Channel breakdown',
-    tooltip: 'Where new and expansion ARR is coming from by motion.',
-    items: ['Self serve upgrade or outbound', 'Partner-assisted', 'Enterprise AE-led'],
-    suggestedQuestions: ['Which channel is driving the most ARR this quarter?'],
+    tooltip: 'Pro-tier acquisition: self-serve upgrades vs outbound sales to larger retail chains.',
+    items: ['Self-serve upgrade', 'Outbound sales', 'Partner-assisted'],
+    suggestedQuestions: ['Which channel is driving the Pro-tier dip this quarter?'],
+    compareBars: [
+      { label: 'Self-serve upgrade', actual: 0.42, prior: 0.43 },
+      { label: 'Outbound sales', actual: 0.28, prior: 0.55 },
+      { label: 'Partner-assisted', actual: 0.2, prior: 0.21 },
+    ],
   },
 ];
 
@@ -186,26 +209,26 @@ export function formatMetricValue(value: number, unit: KpiDefinition['unit']): s
 export const SOURCES: Record<string, Source> = {
   srcFinanceRevenue: {
     id: 'srcFinanceRevenue',
-    name: 'Finance DW — Revenue by Region (Q3 close)',
+    name: 'Finance DW — Subscription Revenue vs Plan (Q3 close)',
     type: 'financeDW',
     timestamp: 'Updated Aug 1, 2026',
-    snippet: 'APAC revenue: $1.02M in Q3 vs $1.24M in Q2 (−17.7% QoQ).',
+    snippet: 'Q3 revenue $2.1M vs $2.4M forecast (−12%). QoQ −12%; vs Q3 last year −3%.',
     url: '#',
   },
   srcSfdcRenewals: {
     id: 'srcSfdcRenewals',
-    name: 'Salesforce — Renewals Report Q3',
+    name: 'Salesforce — Revenue by Tier (Starter / Growth / Pro)',
     type: 'crm',
     timestamp: 'Synced 6h ago',
-    snippet: 'APAC enterprise renewal rate: 81% (Q3) vs 92% (Q2).',
+    snippet: 'Starter and Growth roughly flat QoQ. Pro tier revenue −34% QoQ.',
     url: '#',
   },
   srcSfdcPipeline: {
     id: 'srcSfdcPipeline',
-    name: 'Salesforce — Pipeline: Delayed Deals',
+    name: 'Salesforce — Pro Pipeline by Channel',
     type: 'crm',
     timestamp: 'Synced 6h ago',
-    snippet: "2 enterprise opportunities (~$1.2M) marked 'delayed', pushed from Q3 to Q4.",
+    snippet: 'Pro self-serve upgrades flat. Outbound-sourced new Pro deals nearly halved QoQ.',
     url: '#',
   },
   srcSlackRevOps: {
@@ -213,12 +236,13 @@ export const SOURCES: Record<string, Source> = {
     name: 'Slack — #revenue-ops (Jul 28)',
     type: 'chat',
     timestamp: 'Jul 28, 2026',
-    snippet: '"Heads up — Acme Corp and Novarion both asked to push renewal to Q4, budget approval delays."',
+    snippet:
+      '"Outbound coverage on larger retail chains is thin this quarter — fewer Pro first meetings converting."',
     url: '#',
   },
   srcLegalContract: {
     id: 'srcLegalContract',
-    name: 'Legal — Contract Amendment: Acme Corp',
+    name: 'Legal — Outbound deal desk notes (restricted)',
     type: 'doc',
     timestamp: 'Jul 30, 2026',
     snippet: '',
@@ -226,10 +250,10 @@ export const SOURCES: Record<string, Source> = {
   },
   srcFinancePricing: {
     id: 'srcFinancePricing',
-    name: 'Finance DW — APAC Discount Program',
+    name: 'Finance DW — Pro Deal Size & Discounting',
     type: 'financeDW',
     timestamp: 'Updated Jul 15, 2026',
-    snippet: 'A 12% promotional discount ran in APAC for Enterprise renewals, Jun 1 – Aug 31.',
+    snippet: 'Pro median ACV stable QoQ; discount rate unchanged. Closed-won count down sharply.',
     url: '#',
   },
   srcSfdcChurn: {
@@ -253,15 +277,15 @@ export const SOURCES: Record<string, Source> = {
     name: 'Finance DW — New ARR Bookings Q3',
     type: 'financeDW',
     timestamp: 'Updated Aug 1, 2026',
-    snippet: 'New ARR booked: $1.18M in Q3, down from $1.30M in Q2.',
+    snippet: 'New ARR booked: $1.18M in Q3, down from $1.30M in Q2 — Pro outbound weighted.',
     url: '#',
   },
   srcProductUsage: {
     id: 'srcProductUsage',
-    name: 'Product Analytics — Active Seats Q3',
+    name: 'Product Analytics — Active Subscribers Q3',
     type: 'product',
     timestamp: 'Updated Jul 31, 2026',
-    snippet: '1,842 active customers at end of Q3, up from 1,800 in Q2.',
+    snippet: '~2,200 active customers on Starter / Growth / Pro at end of Q3.',
     url: '#',
   },
 };
@@ -286,15 +310,26 @@ const QUERY_VERB: Record<SourceType, string> = {
  * instead of an abstract stage label. Derived from the same scripted findings
  * used elsewhere, so it stays consistent with the citations shown in the answer.
  */
+/** Thought-trace copy: no em dashes / minus glyphs (demo readability). */
+function forThoughtTrace(text: string): string {
+  return text
+    .replace(/\s*[—–]\s*/g, '. ')
+    .replace(/−/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export function buildThoughtSteps(answer: Answer): ThoughtStep[] {
   return answer.findings
     .filter((f) => f.kind === 'evidence' && f.sourceIds.length > 0)
     .map((f) => {
       const primarySource = getSource(f.sourceIds[0]);
+      const shortText = QUERY_VERB[primarySource.type];
       return {
         id: `step-${f.id}`,
         findingId: f.id,
-        text: `${QUERY_VERB[primarySource.type]} — found ${f.text}`,
+        shortText,
+        text: forThoughtTrace(`${shortText}: found ${f.text}`),
       };
     });
 }
@@ -317,36 +352,111 @@ export function getAllSourcesForAnswer(answer: Answer): Source[] {
 // Scripted "hero" answers
 // ---------------------------------------------------------------------------
 
+export function shouldStartClarifying(question: string): boolean {
+  return /revenue|dip|miss|forecast|tier|channel|summarise|summarize|q3/i.test(question);
+}
+
+export function buildRevenueClarifyingRound(): ClarifyingRound {
+  return {
+    intro: "Before I diagnose the Q3 dip, a few quick checks so I don't make false assumptions:",
+    currentIndex: 0,
+    responses: [],
+    questions: [
+      {
+        id: 'oneOffs',
+        prompt: 'Any large one-off invoices or annual prepayments in Q2 or Q3?',
+        why: 'A single big Pro renewal shifting quarters could explain part of the swing on its own.',
+        options: [
+          { id: 'no', label: 'No one-offs, revenue is steady' },
+          { id: 'yes', label: 'Yes, there were some' },
+          { id: 'unsure', label: 'Not sure, check billing data' },
+          { id: 'other', label: 'Something else' },
+        ],
+      },
+      {
+        id: 'forecast',
+        prompt: 'How was the $2.4M forecast built?',
+        why: 'This changes what "12% miss" actually measures.',
+        options: [
+          { id: 'bottomUp', label: 'Bottom-up from pipeline' },
+          { id: 'topDown', label: 'Top-down growth target' },
+          { id: 'mix', label: 'Mix of both' },
+          { id: 'other', label: 'Something else' },
+        ],
+      },
+      {
+        id: 'churn',
+        prompt: 'Did any existing Pro accounts churn or downgrade in Q3?',
+        why: "I'm currently reading this as a new-business shortfall. Churn would change the diagnosis.",
+        options: [
+          { id: 'no', label: 'No churn, accounts held' },
+          { id: 'yes', label: 'Yes, some churned' },
+          { id: 'other', label: 'Something else' },
+        ],
+      },
+      {
+        id: 'outbound',
+        prompt: 'Any changes to the outbound team in Q3 — territories, quotas, headcount?',
+        why: 'A mid-quarter reshuffle would produce exactly this pattern.',
+        options: [
+          { id: 'no', label: 'No changes' },
+          { id: 'yes', label: 'Yes, something changed' },
+          { id: 'other', label: 'Something else' },
+        ],
+      },
+    ],
+  };
+}
+
 export const REVENUE_DIP_ANSWER: Answer = {
-  summary:
-    'Revenue dipped mainly because APAC enterprise renewals slowed in Q3 — fewer renewals closed, and two large deals slipped to Q4.',
+  confidence: 'medium',
+  summary: [
+    "Here's a rundown on the Q3 revenue dip. I've highlighted where further validation is needed as I'm not able to access certain datasets.",
+    '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
+    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**. Starter, Growth, and Pro self-serve have not dipped.',
+    '### How I got here',
+    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable.',
+    'We were able to diagnose the segment based on your tier and channel data.',
+    '### Validation needed',
+    [
+      '>>> CRM activity data for the outbound team',
+      "I have closed-won deals — the outcomes — but I don't have the pipeline activity behind them: calls made, meetings booked, opportunities created, stage-by-stage conversion, or sales cycle length for Q2 vs. Q3 to further analyse why Pro sales are below target.",
+    ].join('\n'),
+  ].join('\n\n'),
   findings: [
     {
       id: 'revenue-e1',
       kind: 'evidence',
       metricId: 'revenue',
-      text: 'APAC revenue fell 17.7% quarter-on-quarter in Q3.',
+      text: 'Q3 revenue was $2.1M versus a $2.4M forecast, a 12% miss that is only 3% below Q3 last year.',
       sourceIds: ['srcFinanceRevenue'],
     },
     {
       id: 'revenue-e2',
       kind: 'evidence',
       metricId: 'revenue',
-      text: 'APAC enterprise renewal rate dropped from 92% to 81%.',
+      text: 'Starter and Growth tiers are roughly flat while Pro tier revenue is down about 34% QoQ, where the dip lives.',
       sourceIds: ['srcSfdcRenewals'],
     },
     {
       id: 'revenue-e3',
       kind: 'evidence',
       metricId: 'revenue',
-      text: 'Two enterprise accounts delayed contracts worth ~$1.2M to Q4.',
+      text: 'Within Pro, self-serve upgrades are flat while outbound-sourced new Pro deals nearly halved.',
       sourceIds: ['srcSfdcPipeline', 'srcSlackRevOps', 'srcLegalContract'],
+    },
+    {
+      id: 'revenue-e4',
+      kind: 'evidence',
+      metricId: 'revenue',
+      text: 'Pro closed-won count is down while median ACV and discount rate are stable, pointing to a volume problem not a value problem.',
+      sourceIds: ['srcFinancePricing'],
     },
     {
       id: 'revenue-a1',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming no material pricing changes affected APAC in Q3.',
+      text: 'Assuming Products A/B/C mix inside Pro did not shift enough to explain the outbound miss on its own.',
       confidence: 'medium',
       sourceIds: [],
     },
@@ -354,27 +464,27 @@ export const REVENUE_DIP_ANSWER: Answer = {
       id: 'revenue-a2',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming the two delayed contracts would have closed within Q3 absent the delay.',
-      confidence: 'low',
-      sourceIds: [],
+      text: 'Assuming the mild −3% YoY decline partly reflects seasonality in mid-market retail buying cycles.',
+      confidence: 'medium',
+      sourceIds: ['srcFinanceRevenue'],
     },
     {
       id: 'revenue-u1',
       kind: 'unknown',
       metricId: 'revenue',
-      text: 'Why did the renewal rate drop specifically in APAC and not other regions?',
+      text: 'Is outbound capacity (reps, meetings, coverage) down, or is conversion from first meeting to close weaker?',
       sourceIds: [],
-      investigateQuestion: 'Why did the renewal rate drop specifically in APAC?',
+      investigateQuestion: 'Is the Pro outbound miss a capacity problem or a conversion problem?',
     },
     {
       id: 'revenue-u2',
       kind: 'unknown',
       metricId: 'revenue',
-      text: 'Whether the EMEA pricing promotion had a knock-on effect on APAC deals.',
+      text: 'Whether larger retail chains lengthened procurement cycles this quarter versus last year.',
       sourceIds: [],
+      investigateQuestion: 'Did larger retail chains lengthen Pro procurement cycles in Q3?',
     },
   ],
-  nextCheck: 'Confirm with Finance Ops whether APAC discounting is planned to continue into Q4.',
 };
 
 export const CHURN_SOLO_ANSWER: Answer = {
@@ -416,8 +526,10 @@ export const CHURN_SOLO_ANSWER: Answer = {
 };
 
 export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
-  summary:
-    'Partly. Higher APAC churn explains some of the Q3 revenue dip, but delayed — not lost — enterprise deals are the bigger factor.',
+  summary: [
+    'Churn is up modestly, but it is not the main driver of the Q3 revenue miss. The $2.1M vs $2.4M gap is explained primarily by Pro-tier acquisition — outbound-sourced new Pro deals nearly halved — while Starter and Growth stay roughly flat.',
+    'Treat churn as a secondary watch item. The actionable story for the leadership brief is Pro volume from outbound, not a broad-based retention collapse across the ~2,200-customer base.',
+  ].join('\n\n'),
   findings: [
     {
       id: 'combined-e1',
@@ -430,14 +542,14 @@ export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
       id: 'combined-e2',
       kind: 'evidence',
       metricId: 'revenue',
-      text: "Two of the three at-risk accounts are marked 'delayed', not 'churned', in the CRM.",
-      sourceIds: ['srcSfdcPipeline'],
+      text: 'Pro outbound closed-won count nearly halved; that alone accounts for most of the revenue gap vs plan.',
+      sourceIds: ['srcSfdcPipeline', 'srcFinanceRevenue'],
     },
     {
       id: 'combined-a1',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming delayed deals in the CRM will still close in Q4.',
+      text: 'Assuming churned logos are not disproportionately the same larger retail chains the outbound team targets.',
       confidence: 'medium',
       sourceIds: [],
     },
@@ -445,79 +557,82 @@ export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
       id: 'combined-u1',
       kind: 'unknown',
       metricId: 'churn',
-      text: 'Whether elevated churn is concentrated in the same APAC accounts driving the revenue dip, or a separate SMB trend.',
+      text: 'Whether churn is elevated inside Pro specifically, or concentrated in Starter/Growth.',
       sourceIds: [],
-      investigateQuestion: 'Is churn concentrated in the same APAC accounts, or separate?',
+      investigateQuestion: 'Is Q3 churn concentrated in the Pro tier?',
     },
   ],
-  nextCheck: 'Segment churned accounts by region to see if APAC and SMB churn are the same story.',
+  nextCheck: 'Split churn by tier (Starter / Growth / Pro) before treating retention as part of the revenue miss.',
 };
 
-export const APAC_RENEWAL_DRILLDOWN_ANSWER: Answer = {
-  summary:
-    'APAC renewals slowed mostly among enterprise accounts citing budget approval delays, not product dissatisfaction.',
+export const PRO_OUTBOUND_DRILLDOWN_ANSWER: Answer = {
+  summary: [
+    'The Pro miss is a conversion-and-coverage story on outbound, not self-serve. Self-serve Pro upgrades held flat; the hole is in new logos and expansions sourced by the team selling into larger retail chains.',
+    'Deal count is down while ACV is stable, so the next check is whether reps are running fewer qualified opportunities or losing more late-stage deals.',
+  ].join('\n\n'),
   findings: [
     {
-      id: 'drill-apac-e1',
+      id: 'drill-pro-e1',
       kind: 'evidence',
       metricId: 'revenue',
-      text: "44% of delayed APAC accounts cited 'pricing/budget' as the primary reason.",
-      sourceIds: ['srcSfdcChurn'],
+      text: 'Outbound-sourced Pro closed-won count nearly halved QoQ; self-serve Pro upgrades unchanged.',
+      sourceIds: ['srcSfdcPipeline'],
     },
     {
-      id: 'drill-apac-e2',
+      id: 'drill-pro-e2',
       kind: 'evidence',
       metricId: 'revenue',
-      text: 'Slack thread confirms two large accounts cited internal budget approval delays, not product issues.',
+      text: 'RevOps notes thin coverage on larger retail chains — fewer first meetings converting into Pro closes.',
       sourceIds: ['srcSlackRevOps'],
     },
     {
-      id: 'drill-apac-a1',
+      id: 'drill-pro-a1',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming budget approval delays are temporary and not a signal of reduced APAC demand.',
+      text: 'Assuming product fit for larger chains has not suddenly worsened versus Q2.',
       confidence: 'medium',
       sourceIds: [],
     },
     {
-      id: 'drill-apac-u1',
+      id: 'drill-pro-u1',
       kind: 'unknown',
       metricId: 'revenue',
-      text: "Whether APAC's fiscal year-end (March) is creating a recurring Q3 approval bottleneck.",
+      text: 'Is outbound capacity (reps, meetings, coverage) down, or is conversion from first meeting to close weaker?',
       sourceIds: [],
-      investigateQuestion: "Is APAC's fiscal year-end creating a recurring Q3 approval bottleneck?",
+      investigateQuestion: 'Is the Pro outbound miss a capacity problem or a conversion problem?',
     },
   ],
-  nextCheck: "Check APAC renewal timing against APAC customers' own fiscal year-ends.",
+  nextCheck: 'Compare outbound meeting volume and stage conversion for Pro this quarter vs last.',
 };
 
-export const APAC_FISCAL_YEAR_DRILLDOWN_ANSWER: Answer = {
-  summary: "Yes, most likely — APAC's fiscal year-end lines up with the approval delays, and this looks recurring rather than one-off.",
+export const PRO_VOLUME_DRILLDOWN_ANSWER: Answer = {
+  summary:
+    'Yes — it is a volume problem. Pro closed-won count is down sharply while median ACV and discount rates are essentially unchanged, so the miss is fewer deals closing, not smaller or more heavily discounted deals.',
   findings: [
     {
-      id: 'drill-fy-e1',
+      id: 'drill-vol-e1',
       kind: 'evidence',
       metricId: 'revenue',
-      text: 'The two delayed accounts both run an April–March fiscal year, so Q3 (Jul–Sep) falls in their final budget-review quarter.',
-      sourceIds: ['srcSfdcPipeline'],
+      text: 'Pro median ACV stable QoQ; discount rate unchanged; closed-won count down sharply.',
+      sourceIds: ['srcFinancePricing'],
     },
     {
-      id: 'drill-fy-a1',
+      id: 'drill-vol-a1',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming other APAC accounts on the same fiscal calendar see similar Q3 slowdowns in prior years.',
-      confidence: 'low',
-      sourceIds: [],
+      text: 'Assuming Finance’s ACV series includes outbound and self-serve Pro the same way across quarters.',
+      confidence: 'high',
+      sourceIds: ['srcFinancePricing'],
     },
     {
-      id: 'drill-fy-u1',
+      id: 'drill-vol-u1',
       kind: 'unknown',
       metricId: 'revenue',
-      text: "Whether this pattern held in APAC's Q3 last year too, or is new to this year.",
+      text: 'Whether late-stage losses increased, or the top of funnel simply produced fewer Pro opportunities.',
       sourceIds: [],
     },
   ],
-  nextCheck: "Pull APAC renewal timing for the same quarter last year to confirm this is a recurring pattern.",
+  nextCheck: 'Pull Pro stage conversion from SQL → closed-won for Q2 vs Q3 to see where volume leaks.',
 };
 
 export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
@@ -552,9 +667,9 @@ export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
 /** Applied to `revenue-a1` when the user flags it as not holding. */
 export const REVISED_PRICING_FINDING: Partial<Finding> = {
   kind: 'evidence',
-  text: 'APAC ran a 12% promotional discount on Enterprise renewals from Jun–Aug, overlapping the Q3 dip.',
+  text: 'Product mix inside Pro is stable QoQ — the outbound miss is not explained by a shift away from higher-ACV products.',
   confidence: undefined,
-  sourceIds: ['srcFinancePricing'],
+  sourceIds: ['srcFinancePricing', 'srcSfdcPipeline'],
   revised: true,
   revisedNote: 'Revised based on your feedback — upgraded from Assumption to Evidence.',
 };
@@ -684,8 +799,12 @@ export function resolveAnswer(contextIds: MetricId[]): Answer {
 }
 
 export function resolveDrillDown(question: string, parentMetricId: MetricId): Answer {
-  if (parentMetricId === 'revenue' && /fiscal year/i.test(question)) return APAC_FISCAL_YEAR_DRILLDOWN_ANSWER;
-  if (parentMetricId === 'revenue' && /apac/i.test(question)) return APAC_RENEWAL_DRILLDOWN_ANSWER;
+  if (parentMetricId === 'revenue' && /volume|deal count|deal size|value problem/i.test(question)) {
+    return PRO_VOLUME_DRILLDOWN_ANSWER;
+  }
+  if (parentMetricId === 'revenue' && /outbound|capacity|conversion|pro/i.test(question)) {
+    return PRO_OUTBOUND_DRILLDOWN_ANSWER;
+  }
   if (parentMetricId === 'churn' && /smb/i.test(question)) return CHURN_SMB_DRILLDOWN_ANSWER;
   return genericDrillDownAnswer(question, parentMetricId);
 }

@@ -1,8 +1,11 @@
-import { Bookmark, Compass } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Bookmark, ChevronDown, ChevronUp, Compass } from 'lucide-react';
 import type { Answer, Finding, Stage } from '../../types';
 import { useTypewriter } from '../../hooks/useTypewriter';
+import { ConfidenceBadge } from './ConfidenceBadge';
 import { FindingItem } from './FindingItem';
 import { ReferencesList } from './ReferencesList';
+import { RichSummary } from './RichSummary';
 
 interface AnswerSectionProps {
   answer: Answer;
@@ -20,11 +23,72 @@ function SkeletonLine({ width }: { width: string }) {
   return <div className="h-2.5 animate-pulse rounded-full bg-border-soft" style={{ width }} />;
 }
 
-const GROUPS: { kind: Finding['kind']; heading: string }[] = [
-  { kind: 'evidence', heading: 'Evidence' },
-  { kind: 'assumption', heading: 'Assumptions' },
-  { kind: 'unknown', heading: 'Open Questions' },
+const GROUPS: { kind: Finding['kind']; heading: string; defaultExpanded: boolean }[] = [
+  { kind: 'evidence', heading: 'Evidence & references', defaultExpanded: false },
+  { kind: 'assumption', heading: 'Assumptions', defaultExpanded: false },
+  { kind: 'unknown', heading: 'Open Questions', defaultExpanded: false },
 ];
+
+interface FindingGroupProps {
+  heading: string;
+  findings: Finding[];
+  defaultExpanded: boolean;
+  revisingFindingIds: string[];
+  showMetricTags: boolean;
+  onThumbsUp: (findingId: string) => void;
+  onDoesNotHold: (findingId: string) => void;
+  onInvestigate: (finding: Finding) => void;
+  references?: ReactNode;
+}
+
+function FindingGroup({
+  heading,
+  findings,
+  defaultExpanded,
+  revisingFindingIds,
+  showMetricTags,
+  onThumbsUp,
+  onDoesNotHold,
+  onInvestigate,
+  references,
+}: FindingGroupProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-0.5 py-0.5 text-left transition-colors hover:bg-surface-soft"
+      >
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+          {heading} · {findings.length}
+        </span>
+        {expanded ? (
+          <ChevronUp size={13} className="shrink-0 text-ink-faint" />
+        ) : (
+          <ChevronDown size={13} className="shrink-0 text-ink-faint" />
+        )}
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-2">
+          {findings.map((finding) => (
+            <FindingItem
+              key={finding.id}
+              finding={finding}
+              isRevising={revisingFindingIds.includes(finding.id)}
+              showMetricTag={showMetricTags}
+              onThumbsUp={() => onThumbsUp(finding.id)}
+              onDoesNotHold={() => onDoesNotHold(finding.id)}
+              onInvestigate={finding.investigateQuestion ? () => onInvestigate(finding) : undefined}
+            />
+          ))}
+          {references}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AnswerSection({
   answer,
@@ -44,43 +108,43 @@ export function AnswerSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
+      <div className="flex flex-col gap-3">
+        {summaryVisible && answer.confidence && <ConfidenceBadge level={answer.confidence} />}
         {summaryVisible ? (
-          <p className="text-sm font-medium leading-relaxed text-ink">{summaryText}</p>
+          <RichSummary text={summaryText} />
         ) : (
           <div className="flex flex-col gap-2">
             <SkeletonLine width="92%" />
+            <SkeletonLine width="84%" />
             <SkeletonLine width="70%" />
           </div>
         )}
       </div>
 
-      {GROUPS.map(({ kind, heading }) => {
+      {GROUPS.map(({ kind, heading, defaultExpanded }) => {
         const findings = answer.findings.filter((f) => f.kind === kind && revealedFindingIds.includes(f.id));
         if (findings.length === 0) return null;
         return (
-          <div key={kind} className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-              {heading} · {findings.length}
-            </p>
-            <div className="flex flex-col gap-2">
-              {findings.map((finding) => (
-                <FindingItem
-                  key={finding.id}
-                  finding={finding}
-                  isRevising={revisingFindingIds.includes(finding.id)}
-                  showMetricTag={showMetricTags}
-                  onThumbsUp={() => onThumbsUp(finding.id)}
-                  onDoesNotHold={() => onDoesNotHold(finding.id)}
-                  onInvestigate={finding.investigateQuestion ? () => onInvestigate(finding) : undefined}
-                />
-              ))}
-            </div>
-          </div>
+          <FindingGroup
+            key={kind}
+            heading={heading}
+            findings={findings}
+            defaultExpanded={defaultExpanded}
+            revisingFindingIds={revisingFindingIds}
+            showMetricTags={showMetricTags}
+            onThumbsUp={onThumbsUp}
+            onDoesNotHold={onDoesNotHold}
+            onInvestigate={onInvestigate}
+            references={
+              kind === 'evidence' && isReady ? (
+                <div className="mt-1 border-t border-border-soft pt-2">
+                  <ReferencesList answer={answer} />
+                </div>
+              ) : undefined
+            }
+          />
         );
       })}
-
-      {isReady && <ReferencesList answer={answer} />}
 
       {isReady && answer.nextCheck && (
         <div className="flex items-start gap-2 rounded-xl border border-ocean-soft bg-ocean-soft/60 p-3">

@@ -5,11 +5,26 @@ import { getContextItem, getKpi } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
+import { ClarifyingQuestions } from './ClarifyingQuestions';
+import { ClarifyingPrepLoader } from './ClarifyingPrepLoader';
 import { DrillDownThread } from './DrillDownThread';
 import { ContextChip } from './ContextChip';
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function UserBubble({ text }: { text: string }) {
+  return (
+    <div className="flex justify-end">
+      <div
+        className="max-w-[85%] bg-sage-soft px-3.5 py-2.5 text-sm font-medium text-ink"
+        style={{ borderRadius: '16px 16px 16px 0px' }}
+      >
+        {text}
+      </div>
+    </div>
+  );
 }
 
 function TurnContextNote({ turn }: { turn: ConversationTurn }) {
@@ -42,22 +57,57 @@ function TurnContextNote({ turn }: { turn: ConversationTurn }) {
 }
 
 export function ConversationTurnCard({ turn }: { turn: ConversationTurn }) {
-  const { giveFeedback, markDoesNotHold, startDrillDown, reopenPath, saveRepeatable } = useResearch();
+  const {
+    giveFeedback,
+    markDoesNotHold,
+    startDrillDown,
+    reopenPath,
+    saveRepeatable,
+    answerClarifying,
+  } = useResearch();
   const showMetricTags = turn.usedContextIds.length > 1;
-  const rootDrillDown = turn.activePath.length > 0 ? turn.drillDowns.find((d) => d.id === turn.activePath[0]) : undefined;
+  const rootDrillDown =
+    turn.activePath.length > 0
+      ? turn.drillDowns.find((d) => d.id === turn.activePath[0])
+      : undefined;
+  const clarifying = turn.clarifying;
+  const isClarifying = turn.phase === 'clarifying' && !!clarifying;
+  const clarifyingLoading = isClarifying && turn.stage !== 'ready';
 
   return (
     <div className="flex flex-col gap-3 border-b border-border-soft pb-5 last:border-b-0 last:pb-0">
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">You asked</p>
-        <p className="mt-0.5 text-sm font-medium text-ink">{turn.question}</p>
-      </div>
+      <UserBubble text={turn.question} />
 
       <TurnContextNote turn={turn} />
 
-      {!rootDrillDown && (
+      {clarifyingLoading && <ClarifyingPrepLoader />}
+
+      {isClarifying && clarifying && !clarifyingLoading && (
+        <ClarifyingQuestions
+          clarifying={clarifying}
+          onSelect={(optionId, customLabel) => answerClarifying(turn.id, optionId, customLabel)}
+          showActiveCard={false}
+        />
+      )}
+
+      {!isClarifying && clarifying && clarifying.responses.length > 0 && (
+        <ClarifyingQuestions
+          clarifying={{ ...clarifying, currentIndex: clarifying.questions.length }}
+          onSelect={() => {}}
+          showActiveCard={false}
+        />
+      )}
+
+      {!rootDrillDown && !isClarifying && (
         <>
-          {turn.answer && <ThoughtTrace answer={turn.answer} stage={turn.stage} revealedFindingIds={turn.revealedFindingIds} stopped={turn.stopped} />}
+          {turn.answer && (
+            <ThoughtTrace
+              answer={turn.answer}
+              stage={turn.stage}
+              revealedFindingIds={turn.revealedFindingIds}
+              stopped={turn.stopped}
+            />
+          )}
 
           {turn.answer && (
             <AnswerSection

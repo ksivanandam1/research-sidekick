@@ -17,11 +17,11 @@ import { ProductFilter } from './ProductFilter';
 import { FloatingResearchBar } from './FloatingResearchBar';
 
 const DASHBOARD_SHARE_TEASER =
-  'Q3 overview: Revenue and churn both moved in Q3, largely tied to a slowdown in APAC enterprise renewals. See the Overview for the full picture.';
+  'Q3 overview: $2.1M vs $2.4M plan (−12%). Starter/Growth flat; Pro −34% on outbound volume. YoY only −3%.';
 
 const KPI_TOOLTIPS: Record<MetricId, string> = {
-  revenue: 'Recognized revenue across all products for the selected timeframe.',
-  activeCustomers: 'Customers with at least one active subscription in the period.',
+  revenue: 'Subscription revenue across Products A–C for mid-market retail customers.',
+  activeCustomers: 'Active subscribers on Starter, Growth, and Pro (~2,200).',
   churn: 'Share of customers who cancelled or failed to renew in the period.',
   grossMargin: 'Revenue minus cost of goods sold, as a percent of revenue.',
   newArr: 'New annual recurring revenue booked in the selected timeframe.',
@@ -31,7 +31,7 @@ const ROW_ONE: MetricId[] = ['revenue', 'activeCustomers', 'churn'];
 const ROW_TWO: MetricId[] = ['grossMargin', 'newArr'];
 
 export function InsightsCanvas() {
-  const { attachedContext, addContext, showToast } = useResearch();
+  const { attachedContext, addContext, removeContext, showToast } = useResearch();
   const [timeframe, setTimeframe] = useState<TimeframePreset>(DEFAULT_TIMEFRAME);
   const [product, setProduct] = useState<ProductFilterId>(DEFAULT_PRODUCT);
   const [customFrom, setCustomFrom] = useState('2026-07-01');
@@ -58,7 +58,7 @@ export function InsightsCanvas() {
             type="button"
             onClick={handleExport}
             title="Export a shareable summary"
-            className="inline-flex items-center gap-1.5 rounded-full bg-sage px-3.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-sage px-3.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
           >
             <Upload size={13} />
             Export
@@ -89,7 +89,7 @@ export function InsightsCanvas() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ROW_ONE.map((id) => (
             <KpiCard
               key={id}
@@ -97,6 +97,7 @@ export function InsightsCanvas() {
               tooltip={KPI_TOOLTIPS[id]}
               isAttached={attachedContext.includes(id)}
               onAdd={() => addContext(id)}
+              onRemove={() => removeContext(id)}
             />
           ))}
         </div>
@@ -109,6 +110,7 @@ export function InsightsCanvas() {
               tooltip={KPI_TOOLTIPS[id]}
               isAttached={attachedContext.includes(id)}
               onAdd={() => addContext(id)}
+              onRemove={() => removeContext(id)}
             />
           ))}
         </div>
@@ -119,6 +121,7 @@ export function InsightsCanvas() {
               definition={DIMENSION_DEFINITIONS[0]}
               isAttached={attachedContext.includes('drillDownPath')}
               onAdd={() => addContext('drillDownPath')}
+              onRemove={() => removeContext('drillDownPath')}
             />
           </div>
           <div className="lg:col-span-2">
@@ -126,6 +129,7 @@ export function InsightsCanvas() {
               definition={DIMENSION_DEFINITIONS[1]}
               isAttached={attachedContext.includes('channelBreakdown')}
               onAdd={() => addContext('channelBreakdown')}
+              onRemove={() => removeContext('channelBreakdown')}
             />
           </div>
         </div>

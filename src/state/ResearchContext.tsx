@@ -3,11 +3,14 @@ import type { ContextId, ConversationTurn, DrillDown, Finding, FeedbackValue, Me
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
+  REVENUE_DIP_ANSWER,
   REVISED_PRICING_FINDING,
+  buildRevenueClarifyingRound,
   determineUsedContext,
   getContextItem,
   resolveAnswer,
   resolveDrillDown,
+  shouldStartClarifying,
 } from '../data/mockData';
 
 let idCounter = 0;
@@ -29,6 +32,7 @@ interface ResearchContextValue {
   closePanel: () => void;
   consumePrefill: () => void;
   submitQuestion: (question: string) => void;
+  answerClarifying: (turnId: string, optionId: string, customLabel?: string) => void;
   startDrillDown: (turnId: string, finding: Finding, parentPath?: string[]) => void;
   reopenPath: (turnId: string, path: string[]) => void;
   backToParent: (turnId: string, currentPath: string[]) => void;
@@ -68,12 +72,50 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
 
   const removeContext = useCallback((id: ContextId) => dispatch({ type: 'REMOVE_CONTEXT', id }), []);
 
+  const startDiagnosisJob = useCallback(
+    (turnId: string, answer: NonNullable<ConversationTurn['answer']>) => {
+      const evidenceIds = answer.findings.filter((f) => f.kind === 'evidence').map((f) => f.id);
+      const otherIds = answer.findings.filter((f) => f.kind !== 'evidence').map((f) => f.id);
+      runAnswerJob({
+        evidenceFindingIds: evidenceIds,
+        otherFindingIds: otherIds,
+        onStage: (stage) => dispatch({ type: 'SET_TURN_STAGE', turnId, stage }),
+        onFindingsRevealed: (ids) => dispatch({ type: 'REVEAL_FINDINGS', turnId, findingIds: ids }),
+      });
+    },
+    [runAnswerJob],
+  );
+
   const submitQuestion = useCallback(
     (question: string) => {
       const trimmed = question.trim();
       if (!trimmed) return;
       const contextIds = state.attachedContext;
       const usedContextIds = determineUsedContext(trimmed, contextIds);
+
+      if (shouldStartClarifying(trimmed)) {
+        const turnId = nextId('turn');
+        const turn: ConversationTurn = {
+          id: turnId,
+          question: trimmed,
+          contextIds,
+          usedContextIds,
+          stage: 'analysing',
+          phase: 'clarifying',
+          clarifying: buildRevenueClarifyingRound(),
+          revealedFindingIds: [],
+          drillDowns: [],
+          activePath: [],
+          revisingFindingIds: [],
+        };
+        dispatch({ type: 'CREATE_TURN', turn });
+        // Brief loading beat before clarifying questions appear (demo-friendly pacing).
+        window.setTimeout(() => {
+          dispatch({ type: 'SET_TURN_STAGE', turnId, stage: 'ready' });
+        }, 1800);
+        return;
+      }
+
       const answer = resolveAnswer(usedContextIds);
       const turn: ConversationTurn = {
         id: nextId('turn'),
@@ -81,6 +123,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         contextIds,
         usedContextIds,
         stage: 'analysing',
+        phase: 'diagnosing',
         answer,
         revealedFindingIds: [],
         drillDowns: [],
@@ -88,18 +131,36 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         revisingFindingIds: [],
       };
       dispatch({ type: 'CREATE_TURN', turn });
-
-      const evidenceIds = answer.findings.filter((f) => f.kind === 'evidence').map((f) => f.id);
-      const otherIds = answer.findings.filter((f) => f.kind !== 'evidence').map((f) => f.id);
-
-      runAnswerJob({
-        evidenceFindingIds: evidenceIds,
-        otherFindingIds: otherIds,
-        onStage: (stage) => dispatch({ type: 'SET_TURN_STAGE', turnId: turn.id, stage }),
-        onFindingsRevealed: (ids) => dispatch({ type: 'REVEAL_FINDINGS', turnId: turn.id, findingIds: ids }),
-      });
+      startDiagnosisJob(turn.id, answer);
     },
-    [state.attachedContext, runAnswerJob],
+    [state.attachedContext, startDiagnosisJob],
+  );
+
+  const answerClarifying = useCallback(
+    (turnId: string, optionId: string, customLabel?: string) => {
+      const turn = state.turns.find((t) => t.id === turnId);
+      if (!turn?.clarifying || turn.phase !== 'clarifying' || turn.stage !== 'ready') return;
+      const question = turn.clarifying.questions[turn.clarifying.currentIndex];
+      if (!question) return;
+      const option = question.options.find((o) => o.id === optionId);
+      if (!option) return;
+
+      const label = customLabel?.trim() || option.label;
+      if (optionId === 'other' && !customLabel?.trim()) return;
+
+      const isLast = turn.clarifying.currentIndex >= turn.clarifying.questions.length - 1;
+      dispatch({
+        type: 'RECORD_CLARIFYING_RESPONSE',
+        turnId,
+        response: { questionId: question.id, optionId: option.id, label },
+      });
+
+      if (isLast) {
+        dispatch({ type: 'BEGIN_DIAGNOSIS', turnId, answer: REVENUE_DIP_ANSWER });
+        startDiagnosisJob(turnId, REVENUE_DIP_ANSWER);
+      }
+    },
+    [state.turns, startDiagnosisJob],
   );
 
   const startDrillDown = useCallback(
@@ -210,6 +271,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       closePanel,
       consumePrefill,
       submitQuestion,
+      answerClarifying,
       startDrillDown,
       reopenPath,
       backToParent,
@@ -228,6 +290,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       closePanel,
       consumePrefill,
       submitQuestion,
+      answerClarifying,
       startDrillDown,
       reopenPath,
       backToParent,

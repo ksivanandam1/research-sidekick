@@ -10,7 +10,7 @@ interface ProductFilterProps {
 export function ProductFilter({ value, onChange }: ProductFilterProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const label = PRODUCT_OPTIONS.find((o) => o.id === value)?.label ?? 'All products';
+  const label = PRODUCT_OPTIONS.find((o) => o.id === value)?.label ?? 'All tiers';
 
   useEffect(() => {
     if (!open) return;

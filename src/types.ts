@@ -71,6 +71,8 @@ export interface Answer {
   summary: string;
   findings: Finding[];
   nextCheck?: string;
+  /** Overall answer confidence shown as a badge on the response. */
+  confidence?: Confidence;
 }
 
 export type Stage = 'idle' | 'analysing' | 'retrieving' | 'citing' | 'drafting' | 'ready';
@@ -88,6 +90,34 @@ export interface DrillDown {
   drillDowns: DrillDown[];
 }
 
+export interface ClarifyingOption {
+  id: string;
+  label: string;
+}
+
+export interface ClarifyingQuestion {
+  id: string;
+  prompt: string;
+  why: string;
+  options: ClarifyingOption[];
+}
+
+export interface ClarifyingResponse {
+  questionId: string;
+  optionId: string;
+  label: string;
+}
+
+export interface ClarifyingRound {
+  intro: string;
+  questions: ClarifyingQuestion[];
+  /** Index of the question currently awaiting an answer. */
+  currentIndex: number;
+  responses: ClarifyingResponse[];
+}
+
+export type TurnPhase = 'clarifying' | 'diagnosing' | 'done';
+
 export interface ConversationTurn {
   id: string;
   question: string;
@@ -102,6 +132,9 @@ export interface ConversationTurn {
   /** Ids of drill-downs from root to the currently viewed nested thread, e.g. ['d1', 'd1-1']. */
   activePath: string[];
   revisingFindingIds: string[];
+  /** Clarifying round before diagnosis (Claude-style follow-ups). */
+  phase?: TurnPhase;
+  clarifying?: ClarifyingRound;
 }
 
 export interface ContextItem {
@@ -112,7 +145,10 @@ export interface ContextItem {
 export interface ThoughtStep {
   id: string;
   findingId: string;
+  /** Full line shown in the expanded trace. */
   text: string;
+  /** Short title for the collapsed thinking header (e.g. "Queried Salesforce"). */
+  shortText: string;
 }
 
 export interface SavedCheck {

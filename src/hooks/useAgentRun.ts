@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { Stage } from '../types';
 
+/** Deliberately slow so demos can read each thinking title. */
 const STAGE_DELAY_MS: Record<Stage, number> = {
   idle: 0,
-  analysing: 650,
-  retrieving: 700,
+  analysing: 2200,
+  retrieving: 1600,
   citing: 0,
-  drafting: 850,
+  drafting: 2400,
   ready: 0,
 };
 
-/** Delay between revealing each evidence step during 'citing', for a staggered trace. */
-const STEP_STAGGER_MS = 260;
+/** Pause on each evidence step while the collapsed title updates. */
+const STEP_STAGGER_MS = 2000;
 
-const REVISION_DELAY_MS = 900;
+const REVISION_DELAY_MS = 1400;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

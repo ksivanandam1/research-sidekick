@@ -1,4 +1,6 @@
 import type {
+  Answer,
+  ClarifyingResponse,
   ContextId,
   ConversationTurn,
   DrillDown,
@@ -56,7 +58,9 @@ export type SessionAction =
   | { type: 'ADD_SAVED_CHECK'; check: SavedCheck }
   | { type: 'SHOW_TOAST'; message: string }
   | { type: 'DISMISS_TOAST' }
-  | { type: 'SET_PENDING_PREFILL'; text: string | null };
+  | { type: 'SET_PENDING_PREFILL'; text: string | null }
+  | { type: 'RECORD_CLARIFYING_RESPONSE'; turnId: string; response: ClarifyingResponse }
+  | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer };
 
 function mapFindings(
   findings: Finding[],
@@ -125,7 +129,11 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
       return { ...state, turns: [...state.turns, action.turn] };
     }
     case 'SET_TURN_STAGE': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, stage: action.stage }));
+      return updateTurn(state, action.turnId, (t) => ({
+        ...t,
+        stage: action.stage,
+        phase: action.stage === 'ready' && t.phase === 'diagnosing' ? 'done' : t.phase,
+      }));
     }
     case 'REVEAL_FINDINGS': {
       return updateTurn(state, action.turnId, (t) => ({ ...t, revealedFindingIds: action.findingIds }));
@@ -229,6 +237,28 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
     }
     case 'SET_PENDING_PREFILL': {
       return { ...state, pendingPrefill: action.text };
+    }
+    case 'RECORD_CLARIFYING_RESPONSE': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (!t.clarifying) return t;
+        return {
+          ...t,
+          clarifying: {
+            ...t.clarifying,
+            responses: [...t.clarifying.responses, action.response],
+            currentIndex: t.clarifying.currentIndex + 1,
+          },
+        };
+      });
+    }
+    case 'BEGIN_DIAGNOSIS': {
+      return updateTurn(state, action.turnId, (t) => ({
+        ...t,
+        phase: 'diagnosing',
+        answer: action.answer,
+        stage: 'analysing',
+        revealedFindingIds: [],
+      }));
     }
     default:
       return state;
