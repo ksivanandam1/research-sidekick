@@ -413,9 +413,9 @@ export const REVENUE_DIP_ANSWER: Answer = {
   summary: [
     "Here's a rundown on the Q3 revenue dip. I've highlighted where further validation is needed as I'm not able to access certain datasets.",
     '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
-    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**. Starter, Growth, and Pro self-serve have not dipped.',
+    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**[1]. Year on year it is only **down 3%**[1]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3]. Starter, Growth, and Pro self-serve have not dipped[2].',
     '### How I got here',
-    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable.',
+    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality[1].\n2. Broke revenue down by tier. Only Pro moved, down 34%[2].\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[3][4].',
     'We were able to diagnose the segment based on your tier and channel data.',
     '### Validation needed',
     [
@@ -423,6 +423,20 @@ export const REVENUE_DIP_ANSWER: Answer = {
       "I have closed-won deals — the outcomes — but I don't have the pipeline activity behind them: calls made, meetings booked, opportunities created, stage-by-stage conversion, or sales cycle length for Q2 vs. Q3 to further analyse why Pro sales are below target.",
     ].join('\n'),
   ].join('\n\n'),
+  pinSummary:
+    'Q3 missed forecast by 12%, but the drop is outbound Pro — not a broad decline across tiers.',
+  chart: {
+    title: 'Pro revenue by acquisition channel',
+    subtitle: 'Q3 actual vs Q2 prior — click a channel to focus',
+    actualLabel: 'Q3',
+    priorLabel: 'Q2',
+    defaultSelectedIndex: 1,
+    series: [
+      { label: 'Self-serve upgrade', actual: 0.42, prior: 0.43 },
+      { label: 'Outbound sales', actual: 0.28, prior: 0.55 },
+      { label: 'Partner-assisted', actual: 0.2, prior: 0.21 },
+    ],
+  },
   findings: [
     {
       id: 'revenue-e1',
@@ -490,6 +504,8 @@ export const REVENUE_DIP_ANSWER: Answer = {
 export const CHURN_SOLO_ANSWER: Answer = {
   summary:
     'Churn rose mainly in APAC enterprise accounts, largely for budget and approval reasons rather than product dissatisfaction.',
+  pinSummary:
+    'Churn rose mainly in APAC enterprise; budget/approval friction, not product dissatisfaction.',
   findings: [
     {
       id: 'churn-e1',
@@ -530,6 +546,8 @@ export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
     'Churn is up modestly, but it is not the main driver of the Q3 revenue miss. The $2.1M vs $2.4M gap is explained primarily by Pro-tier acquisition — outbound-sourced new Pro deals nearly halved — while Starter and Growth stay roughly flat.',
     'Treat churn as a secondary watch item. The actionable story for the leadership brief is Pro volume from outbound, not a broad-based retention collapse across the ~2,200-customer base.',
   ].join('\n\n'),
+  pinSummary:
+    'Revenue miss is Pro outbound volume; churn is a secondary watch item, not the main driver.',
   findings: [
     {
       id: 'combined-e1',
@@ -570,6 +588,8 @@ export const PRO_OUTBOUND_DRILLDOWN_ANSWER: Answer = {
     'The Pro miss is a conversion-and-coverage story on outbound, not self-serve. Self-serve Pro upgrades held flat; the hole is in new logos and expansions sourced by the team selling into larger retail chains.',
     'Deal count is down while ACV is stable, so the next check is whether reps are running fewer qualified opportunities or losing more late-stage deals.',
   ].join('\n\n'),
+  pinSummary:
+    'Outbound Pro miss is conversion-and-coverage on new logos — self-serve Pro held flat.',
   findings: [
     {
       id: 'drill-pro-e1',
@@ -608,6 +628,8 @@ export const PRO_OUTBOUND_DRILLDOWN_ANSWER: Answer = {
 export const PRO_VOLUME_DRILLDOWN_ANSWER: Answer = {
   summary:
     'Yes — it is a volume problem. Pro closed-won count is down sharply while median ACV and discount rates are essentially unchanged, so the miss is fewer deals closing, not smaller or more heavily discounted deals.',
+  pinSummary:
+    'Volume problem: closed-won count down sharply while ACV and discounts stay stable.',
   findings: [
     {
       id: 'drill-vol-e1',
@@ -637,6 +659,7 @@ export const PRO_VOLUME_DRILLDOWN_ANSWER: Answer = {
 
 export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
   summary: 'No — SMB churn is flat. The Q3 increase is concentrated in Enterprise accounts.',
+  pinSummary: 'SMB churn is flat — the Q3 rise is concentrated in Enterprise accounts.',
   findings: [
     {
       id: 'drill-smb-e1',
