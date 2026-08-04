@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react';
+import { Dna } from 'lucide-react';
 import { getContextItem } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 
@@ -25,7 +25,7 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
           onClick={() => onSelect(q)}
           className="inline-flex items-center gap-1 rounded-full border border-border-soft bg-surface-soft px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
         >
-          <Sparkles size={10} />
+          <Dna size={10} />
           {q}
         </button>
       ))}

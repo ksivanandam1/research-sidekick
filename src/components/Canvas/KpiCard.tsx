@@ -15,11 +15,11 @@ interface KpiCardProps {
 }
 
 const CHART_COLOR: Record<KpiDefinition['id'], string> = {
-  revenue: 'text-ocean',
-  grossMargin: 'text-sage',
-  churn: 'text-terracotta',
-  newArr: 'text-ocean',
-  activeCustomers: 'text-sage',
+  revenue: 'text-chart-1',
+  grossMargin: 'text-chart-3',
+  churn: 'text-chart-2',
+  newArr: 'text-chart-1',
+  activeCustomers: 'text-chart-3',
 };
 
 function DeltaBadge({ kpi, compact = false }: { kpi: KpiDefinition; compact?: boolean }) {
@@ -69,7 +69,16 @@ export function KpiCard({ kpi, tooltip, isAttached, onAdd, onRemove }: KpiCardPr
   const isDonut = kpi.chartType === 'donut';
 
   return (
-    <div className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-soft transition-shadow hover:shadow-soft-lg">
+    <div
+      className={`flex h-full flex-col gap-4 rounded-2xl bg-surface p-5 shadow-soft transition-[box-shadow] hover:shadow-soft-lg ${
+        isAttached ? '' : 'border-0'
+      }`}
+      style={
+        isAttached
+          ? { boxShadow: '0 0 0 5px rgba(121, 120, 120, 0.5)' }
+          : undefined
+      }
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <p className="truncate text-sm font-medium text-ink-soft">{kpi.title}</p>

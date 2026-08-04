@@ -23,7 +23,7 @@ function EmptyState() {
 }
 
 export function ChatPanel() {
-  const { turns, closePanel, answerClarifying } = useResearch();
+  const { turns, closePanel, startNewChat, answerClarifying } = useResearch();
   const [exportOpen, setExportOpen] = useState(false);
   const lastReadyTurn = [...turns].reverse().find((t) => t.stage === 'ready') ?? null;
 
@@ -38,7 +38,12 @@ export function ChatPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <PanelHeader onClose={closePanel} onShare={() => setExportOpen(true)} shareDisabled={!lastReadyTurn} />
+      <PanelHeader
+        onClose={closePanel}
+        onNewChat={startNewChat}
+        onShare={() => setExportOpen(true)}
+        shareDisabled={!lastReadyTurn}
+      />
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {turns.length === 0 ? (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowUp, ImagePlus, Mic, Sparkles } from 'lucide-react';
+import { ArrowUp, Dna, ImagePlus, Mic } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 
 const PLACEHOLDER = 'Get the latest insights on the revenue dip this quarter.';
@@ -38,7 +38,7 @@ export function FloatingResearchBar() {
             onClick={handleSummarise}
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
           >
-            <Sparkles size={12} className="text-sage" />
+            <Dna size={12} className="text-sage" />
             Summarise
           </button>
         </div>
@@ -96,7 +96,7 @@ export function FloatingResearchBar() {
             type="button"
             onClick={handleSubmit}
             disabled={!text.trim()}
-            title="Ask research analyst"
+            title="Ask Sidekick"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-surface transition-opacity disabled:opacity-35"
           >
             <ArrowUp size={16} />

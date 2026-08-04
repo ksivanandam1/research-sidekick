@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Bookmark, ChevronDown, ChevronUp, Compass } from 'lucide-react';
 import type { Answer, Finding, Stage } from '../../types';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { FindingItem } from './FindingItem';
-import { ReferencesList } from './ReferencesList';
 import { RichSummary } from './RichSummary';
+import { AnswerInsightChart } from './AnswerInsightChart';
 
 interface AnswerSectionProps {
   answer: Answer;
@@ -24,7 +24,6 @@ function SkeletonLine({ width }: { width: string }) {
 }
 
 const GROUPS: { kind: Finding['kind']; heading: string; defaultExpanded: boolean }[] = [
-  { kind: 'evidence', heading: 'Evidence & references', defaultExpanded: false },
   { kind: 'assumption', heading: 'Assumptions', defaultExpanded: false },
   { kind: 'unknown', heading: 'Open Questions', defaultExpanded: false },
 ];
@@ -38,7 +37,6 @@ interface FindingGroupProps {
   onThumbsUp: (findingId: string) => void;
   onDoesNotHold: (findingId: string) => void;
   onInvestigate: (finding: Finding) => void;
-  references?: ReactNode;
 }
 
 function FindingGroup({
@@ -50,7 +48,6 @@ function FindingGroup({
   onThumbsUp,
   onDoesNotHold,
   onInvestigate,
-  references,
 }: FindingGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -83,7 +80,6 @@ function FindingGroup({
               onInvestigate={finding.investigateQuestion ? () => onInvestigate(finding) : undefined}
             />
           ))}
-          {references}
         </div>
       )}
     </div>
@@ -105,13 +101,14 @@ export function AnswerSection({
   const summaryText = useTypewriter(answer.summary, summaryActive);
   const summaryVisible = stage === 'drafting' || stage === 'ready';
   const isReady = stage === 'ready';
+  const citations = answer.findings.filter((f) => f.kind === 'evidence');
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
         {summaryVisible && answer.confidence && <ConfidenceBadge level={answer.confidence} />}
         {summaryVisible ? (
-          <RichSummary text={summaryText} />
+          <RichSummary text={summaryText} citations={citations} />
         ) : (
           <div className="flex flex-col gap-2">
             <SkeletonLine width="92%" />
@@ -120,6 +117,8 @@ export function AnswerSection({
           </div>
         )}
       </div>
+
+      {summaryVisible && answer.chart && <AnswerInsightChart chart={answer.chart} />}
 
       {GROUPS.map(({ kind, heading, defaultExpanded }) => {
         const findings = answer.findings.filter((f) => f.kind === kind && revealedFindingIds.includes(f.id));
@@ -135,13 +134,6 @@ export function AnswerSection({
             onThumbsUp={onThumbsUp}
             onDoesNotHold={onDoesNotHold}
             onInvestigate={onInvestigate}
-            references={
-              kind === 'evidence' && isReady ? (
-                <div className="mt-1 border-t border-border-soft pt-2">
-                  <ReferencesList answer={answer} />
-                </div>
-              ) : undefined
-            }
           />
         );
       })}

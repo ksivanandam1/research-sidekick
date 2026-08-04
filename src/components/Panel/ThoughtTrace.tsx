@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, CircleDashed, Loader2, OctagonX } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, CircleDashed, OctagonX } from 'lucide-react';
 import type { Answer, Stage } from '../../types';
 import { buildThoughtSteps } from '../../data/mockData';
+import { DnaLoader } from './DnaLoader';
 
 interface ThoughtTraceProps {
   answer: Answer;
@@ -14,7 +15,7 @@ type StepStatus = 'pending' | 'running' | 'complete' | 'stopped';
 
 function StatusIcon({ status }: { status: StepStatus }) {
   if (status === 'complete') return <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-sage" />;
-  if (status === 'running') return <Loader2 size={13} className="mt-0.5 shrink-0 animate-spin text-ink-soft" />;
+  if (status === 'running') return <DnaLoader size={13} className="mt-0.5" />;
   if (status === 'stopped') return <OctagonX size={13} className="mt-0.5 shrink-0 text-terracotta" />;
   return <CircleDashed size={13} className="mt-0.5 shrink-0 text-ink-faint" />;
 }
@@ -88,7 +89,7 @@ export function ThoughtTrace({ answer, stage, revealedFindingIds, stopped }: Tho
           className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
         >
           <span className="inline-flex min-w-0 items-center gap-1.5">
-            <Loader2 size={12} className="shrink-0 animate-spin text-ink-soft" />
+            <DnaLoader size={12} />
             <span key={activeRow.id} className="thought-shimmer-text truncate text-[11px] font-medium">
               {activeRow.shortText}
             </span>
