@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { MoreHorizontal, Upload } from 'lucide-react';
-import type { MetricId } from '../../types';
+import type { ContextId, MetricId } from '../../types';
 import { DIMENSION_DEFINITIONS } from '../../data/mockData';
 import {
   DEFAULT_PRODUCT,
   DEFAULT_TIMEFRAME,
+  TIMEFRAME_OPTIONS,
   resolveKpis,
   type ProductFilterId,
   type TimeframePreset,
@@ -34,11 +35,16 @@ export function InsightsCanvas() {
   const { attachedContext, addContext, removeContext, showToast } = useResearch();
   const [timeframe, setTimeframe] = useState<TimeframePreset>(DEFAULT_TIMEFRAME);
   const [product, setProduct] = useState<ProductFilterId>(DEFAULT_PRODUCT);
-  const [customFrom, setCustomFrom] = useState('2026-07-01');
-  const [customTo, setCustomTo] = useState('2026-09-30');
 
   const kpis = useMemo(() => resolveKpis(timeframe, product), [timeframe, product]);
   const byId = useMemo(() => Object.fromEntries(kpis.map((k) => [k.id, k])) as Record<MetricId, (typeof kpis)[0]>, [kpis]);
+  const timeframeLabel =
+    TIMEFRAME_OPTIONS.find((option) => option.id === timeframe)?.label ?? 'This quarter';
+  const attachedIds = attachedContext.map((item) => item.id);
+
+  function attach(id: ContextId) {
+    addContext(id, { timeframeLabel });
+  }
 
   async function handleExport() {
     try {
@@ -74,17 +80,8 @@ export function InsightsCanvas() {
         </div>
       </header>
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-        <TimeframeControl
-          value={timeframe}
-          onChange={setTimeframe}
-          customFrom={customFrom}
-          customTo={customTo}
-          onCustomChange={(from, to) => {
-            setCustomFrom(from);
-            setCustomTo(to);
-          }}
-        />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <TimeframeControl value={timeframe} onChange={setTimeframe} />
         <ProductFilter value={product} onChange={setProduct} />
       </div>
 
@@ -95,8 +92,8 @@ export function InsightsCanvas() {
               key={id}
               kpi={byId[id]}
               tooltip={KPI_TOOLTIPS[id]}
-              isAttached={attachedContext.includes(id)}
-              onAdd={() => addContext(id)}
+              isAttached={attachedIds.includes(id)}
+              onAdd={() => attach(id)}
               onRemove={() => removeContext(id)}
             />
           ))}
@@ -108,8 +105,8 @@ export function InsightsCanvas() {
               key={id}
               kpi={byId[id]}
               tooltip={KPI_TOOLTIPS[id]}
-              isAttached={attachedContext.includes(id)}
-              onAdd={() => addContext(id)}
+              isAttached={attachedIds.includes(id)}
+              onAdd={() => attach(id)}
               onRemove={() => removeContext(id)}
             />
           ))}
@@ -119,16 +116,16 @@ export function InsightsCanvas() {
           <div className="lg:col-span-1">
             <DimensionCard
               definition={DIMENSION_DEFINITIONS[0]}
-              isAttached={attachedContext.includes('drillDownPath')}
-              onAdd={() => addContext('drillDownPath')}
+              isAttached={attachedIds.includes('drillDownPath')}
+              onAdd={() => attach('drillDownPath')}
               onRemove={() => removeContext('drillDownPath')}
             />
           </div>
           <div className="lg:col-span-2">
             <DimensionCard
               definition={DIMENSION_DEFINITIONS[1]}
-              isAttached={attachedContext.includes('channelBreakdown')}
-              onAdd={() => addContext('channelBreakdown')}
+              isAttached={attachedIds.includes('channelBreakdown')}
+              onAdd={() => attach('channelBreakdown')}
               onRemove={() => removeContext('channelBreakdown')}
             />
           </div>

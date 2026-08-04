@@ -1,10 +1,19 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
-import type { ContextId, ConversationTurn, DrillDown, Finding, FeedbackValue, MetricId, PinTrigger, SavedCheck } from '../types';
+import type {
+  AttachedContextItem,
+  ContextId,
+  ConversationTurn,
+  DrillDown,
+  Finding,
+  MetricId,
+  PinTrigger,
+  ResponseFeedback,
+  SavedCheck,
+} from '../types';
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
   REVENUE_DIP_ANSWER,
-  REVISED_PRICING_FINDING,
   buildRevenueClarifyingRound,
   determineUsedContext,
   getContextItem,
@@ -20,7 +29,7 @@ function nextId(prefix: string): string {
 }
 
 interface ResearchContextValue {
-  attachedContext: ContextId[];
+  attachedContext: AttachedContextItem[];
   panelOpen: boolean;
   turns: ConversationTurn[];
   savedChecks: SavedCheck[];
@@ -28,7 +37,10 @@ interface ResearchContextValue {
   pendingPrefill: string | null;
   pinTrigger: PinTrigger;
   setPinTrigger: (pinTrigger: PinTrigger) => void;
-  addContext: (id: ContextId, opts?: { prefill?: string }) => void;
+  addContext: (
+    id: ContextId,
+    opts: { timeframeLabel: string; prefill?: string },
+  ) => void;
   removeContext: (id: ContextId) => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -40,8 +52,7 @@ interface ResearchContextValue {
   reopenPath: (turnId: string, path: string[]) => void;
   backToParent: (turnId: string, currentPath: string[]) => void;
   stopRun: (turnId: string, path?: string[]) => void;
-  giveFeedback: (turnId: string, findingId: string, value: FeedbackValue, path?: string[]) => void;
-  markDoesNotHold: (turnId: string, findingId: string, path?: string[]) => void;
+  submitResponseFeedback: (turnId: string, feedback: ResponseFeedback, path?: string[]) => void;
   saveRepeatable: (question: string, metricIds?: MetricId[]) => void;
   showToast: (message: string) => void;
   dismissToast: () => void;
@@ -51,7 +62,7 @@ const ResearchContext = createContext<ResearchContextValue | null>(null);
 
 export function ResearchProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(researchReducer, initialSessionState);
-  const { runAnswerJob, runRevisionJob } = useAgentRun();
+  const { runAnswerJob } = useAgentRun();
 
   const showToast = useCallback((message: string) => dispatch({ type: 'SHOW_TOAST', message }), []);
   const dismissToast = useCallback(() => dispatch({ type: 'DISMISS_TOAST' }), []);
@@ -66,14 +77,20 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
   );
 
   const addContext = useCallback(
-    (id: ContextId, opts?: { prefill?: string }) => {
-      dispatch({ type: 'ADD_CONTEXT', id });
+    (id: ContextId, opts: { timeframeLabel: string; prefill?: string }) => {
+      const meta = getContextItem(id);
+      const item: AttachedContextItem = {
+        id,
+        title: meta.title,
+        timeframeLabel: opts.timeframeLabel,
+        chartKind: meta.chartKind,
+      };
+      dispatch({ type: 'ADD_CONTEXT', item });
       dispatch({ type: 'SET_PANEL_OPEN', open: true });
-      if (opts?.prefill) {
+      if (opts.prefill) {
         dispatch({ type: 'SET_PENDING_PREFILL', text: opts.prefill });
       }
-      const item = getContextItem(id);
-      dispatch({ type: 'SHOW_TOAST', message: `Added ${item.title} to context.` });
+      dispatch({ type: 'SHOW_TOAST', message: `Added ${meta.title} to context.` });
     },
     [],
   );
@@ -98,7 +115,8 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
     (question: string) => {
       const trimmed = question.trim();
       if (!trimmed) return;
-      const contextIds = state.attachedContext;
+      const contextItems = state.attachedContext;
+      const contextIds = contextItems.map((item) => item.id);
       const usedContextIds = determineUsedContext(trimmed, contextIds);
 
       if (shouldStartClarifying(trimmed)) {
@@ -107,6 +125,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
           id: turnId,
           question: trimmed,
           contextIds,
+          contextItems,
           usedContextIds,
           stage: 'analysing',
           phase: 'clarifying',
@@ -114,7 +133,6 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
           revealedFindingIds: [],
           drillDowns: [],
           activePath: [],
-          revisingFindingIds: [],
         };
         dispatch({ type: 'CREATE_TURN', turn });
         // Brief loading beat before clarifying questions appear (demo-friendly pacing).
@@ -129,6 +147,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         id: nextId('turn'),
         question: trimmed,
         contextIds,
+        contextItems,
         usedContextIds,
         stage: 'analysing',
         phase: 'diagnosing',
@@ -136,7 +155,6 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         revealedFindingIds: [],
         drillDowns: [],
         activePath: [],
-        revisingFindingIds: [],
       };
       dispatch({ type: 'CREATE_TURN', turn });
       startDiagnosisJob(turn.id, answer);
@@ -182,7 +200,6 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         stage: 'analysing',
         answer,
         revealedFindingIds: [],
-        revisingFindingIds: [],
         drillDowns: [],
       };
       dispatch({ type: 'START_DRILLDOWN', turnId, parentPath, drillDown });
@@ -219,36 +236,14 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const giveFeedback = useCallback(
-    (turnId: string, findingId: string, value: FeedbackValue, path?: string[]) => {
-      dispatch({ type: 'SET_FEEDBACK', turnId, findingId, path, value });
-      if (value === 'up') showToast('Thanks — noted.');
+  const submitResponseFeedback = useCallback(
+    (turnId: string, feedback: ResponseFeedback, path?: string[]) => {
+      dispatch({ type: 'SET_RESPONSE_FEEDBACK', turnId, path, feedback });
+      showToast(
+        feedback.value === 'up' ? 'Thanks for sharing your feedback.' : 'Thank you for your feedback.',
+      );
     },
     [showToast],
-  );
-
-  const markDoesNotHold = useCallback(
-    (turnId: string, findingId: string, path?: string[]) => {
-      dispatch({ type: 'SET_FEEDBACK', turnId, findingId, path, value: 'down' });
-      dispatch({ type: 'START_REVISION', turnId, findingId, path });
-
-      runRevisionJob({
-        onStart: () => {},
-        onDone: () => {
-          const patch: Partial<Finding> =
-            findingId === 'revenue-a1'
-              ? REVISED_PRICING_FINDING
-              : {
-                  confidence: 'low',
-                  revised: true,
-                  revisedNote: 'Rechecked — evidence is inconclusive, so confidence has been lowered.',
-                };
-          dispatch({ type: 'APPLY_REVISION', turnId, findingId, path, patch });
-          showToast('Updated based on your feedback.');
-        },
-      });
-    },
-    [runRevisionJob, showToast],
   );
 
   const saveRepeatable = useCallback(
@@ -287,8 +282,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       reopenPath,
       backToParent,
       stopRun,
-      giveFeedback,
-      markDoesNotHold,
+      submitResponseFeedback,
       saveRepeatable,
       showToast,
       dismissToast,
@@ -308,8 +302,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       reopenPath,
       backToParent,
       stopRun,
-      giveFeedback,
-      markDoesNotHold,
+      submitResponseFeedback,
       saveRepeatable,
       showToast,
       dismissToast,

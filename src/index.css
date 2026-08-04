@@ -10,6 +10,11 @@
   --color-border: #e5e5e5;
   --color-border-soft: #eeeeee;
 
+  /* Composer (panel input — matches mockup palette) */
+  --color-composer: #f4f4f4;
+  --color-composer-chip: #dcdcdc;
+  --color-composer-placeholder: #afafaf;
+
   /* Ink */
   --color-ink: #24211b;
   --color-ink-soft: #6b6355;
@@ -22,7 +27,7 @@
   --color-card-selected: #797878;
 
   /* Accents: kept low-saturation / understated */
-  --color-sage: #01b183;
+  --color-sage: #00b289;
   --color-sage-soft: #e5f7f1;
   --color-amber: #a97a2f;
   --color-amber-soft: #f4ead6;

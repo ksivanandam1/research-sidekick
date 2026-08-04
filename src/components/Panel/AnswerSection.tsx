@@ -1,22 +1,23 @@
 import { useState } from 'react';
 import { Bookmark, ChevronDown, ChevronUp, Compass } from 'lucide-react';
-import type { Answer, Finding, Stage } from '../../types';
+import type { Answer, Finding, ResponseFeedback, ResponseFeedbackReason, Stage } from '../../types';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { FindingItem } from './FindingItem';
 import { RichSummary } from './RichSummary';
 import { AnswerInsightChart } from './AnswerInsightChart';
+import { ResponseFeedbackControls } from './ResponseFeedbackControls';
 
 interface AnswerSectionProps {
   answer: Answer;
   stage: Stage;
   revealedFindingIds: string[];
-  revisingFindingIds: string[];
   showMetricTags: boolean;
-  onThumbsUp: (findingId: string) => void;
-  onDoesNotHold: (findingId: string) => void;
+  responseFeedback?: ResponseFeedback;
   onInvestigate: (finding: Finding) => void;
   onSaveRepeatable?: () => void;
+  onResponseThumbsUp?: () => void;
+  onResponseThumbsDown?: (reasons: ResponseFeedbackReason[], comment: string) => void;
 }
 
 function SkeletonLine({ width }: { width: string }) {
@@ -32,10 +33,7 @@ interface FindingGroupProps {
   heading: string;
   findings: Finding[];
   defaultExpanded: boolean;
-  revisingFindingIds: string[];
   showMetricTags: boolean;
-  onThumbsUp: (findingId: string) => void;
-  onDoesNotHold: (findingId: string) => void;
   onInvestigate: (finding: Finding) => void;
 }
 
@@ -43,10 +41,7 @@ function FindingGroup({
   heading,
   findings,
   defaultExpanded,
-  revisingFindingIds,
   showMetricTags,
-  onThumbsUp,
-  onDoesNotHold,
   onInvestigate,
 }: FindingGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -73,10 +68,7 @@ function FindingGroup({
             <FindingItem
               key={finding.id}
               finding={finding}
-              isRevising={revisingFindingIds.includes(finding.id)}
               showMetricTag={showMetricTags}
-              onThumbsUp={() => onThumbsUp(finding.id)}
-              onDoesNotHold={() => onDoesNotHold(finding.id)}
               onInvestigate={finding.investigateQuestion ? () => onInvestigate(finding) : undefined}
             />
           ))}
@@ -90,12 +82,12 @@ export function AnswerSection({
   answer,
   stage,
   revealedFindingIds,
-  revisingFindingIds,
   showMetricTags,
-  onThumbsUp,
-  onDoesNotHold,
+  responseFeedback,
   onInvestigate,
   onSaveRepeatable,
+  onResponseThumbsUp,
+  onResponseThumbsDown,
 }: AnswerSectionProps) {
   const summaryActive = stage === 'drafting';
   const summaryText = useTypewriter(answer.summary, summaryActive);
@@ -129,10 +121,7 @@ export function AnswerSection({
             heading={heading}
             findings={findings}
             defaultExpanded={defaultExpanded}
-            revisingFindingIds={revisingFindingIds}
             showMetricTags={showMetricTags}
-            onThumbsUp={onThumbsUp}
-            onDoesNotHold={onDoesNotHold}
             onInvestigate={onInvestigate}
           />
         );
@@ -157,6 +146,14 @@ export function AnswerSection({
           <Bookmark size={12} />
           Save as a repeatable check
         </button>
+      )}
+
+      {isReady && onResponseThumbsUp && onResponseThumbsDown && (
+        <ResponseFeedbackControls
+          feedback={responseFeedback}
+          onThumbsUp={onResponseThumbsUp}
+          onThumbsDown={onResponseThumbsDown}
+        />
       )}
     </div>
   );

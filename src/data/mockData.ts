@@ -1,6 +1,7 @@
 import type {
   Answer,
   ClarifyingRound,
+  ContextChartKind,
   ContextId,
   ContextItem,
   DimensionId,
@@ -182,13 +183,25 @@ export function getDimension(id: DimensionId): DimensionDefinition {
   return dim;
 }
 
-export function getContextItem(id: ContextId): ContextItem & { suggestedQuestions: string[] } {
+export function getContextItem(
+  id: ContextId,
+): ContextItem & { suggestedQuestions: string[]; chartKind: ContextChartKind } {
   if (isMetricId(id)) {
     const kpi = getKpi(id);
-    return { id, title: kpi.title, suggestedQuestions: kpi.suggestedQuestions };
+    return {
+      id,
+      title: kpi.title,
+      suggestedQuestions: kpi.suggestedQuestions,
+      chartKind: kpi.chartType,
+    };
   }
   const dim = getDimension(id);
-  return { id, title: dim.title, suggestedQuestions: dim.suggestedQuestions };
+  return {
+    id,
+    title: dim.title,
+    suggestedQuestions: dim.suggestedQuestions,
+    chartKind: dim.compareBars ? 'compareBars' : 'barStrip',
+  };
 }
 
 export function toContextItem(id: ContextId): ContextItem {

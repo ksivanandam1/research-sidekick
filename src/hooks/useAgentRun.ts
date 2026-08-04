@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { Stage } from '../types';
+import { playResponseReadySound } from '../utils/responseReadySound';
 
 /** Deliberately slow so demos can read each thinking title. */
 const STAGE_DELAY_MS: Record<Stage, number> = {
@@ -80,6 +81,7 @@ export function useAgentRun() {
     if (cancelled()) return;
 
     onStage('ready');
+    playResponseReadySound();
   }, []);
 
   const runRevisionJob = useCallback(async (args: RunRevisionJobArgs) => {

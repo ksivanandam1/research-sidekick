@@ -1,7 +1,7 @@
 import { CornerDownRight } from 'lucide-react';
 import type { ConversationTurn } from '../../types';
 import { isMetricId } from '../../types';
-import { getContextItem, getKpi } from '../../data/mockData';
+import { getKpi } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 import { getAnswerHeadline, getPinExpandDetail } from '../../utils/answerPin';
 import { ThoughtTrace } from './ThoughtTrace';
@@ -9,7 +9,7 @@ import { AnswerSection } from './AnswerSection';
 import { ClarifyingQuestions } from './ClarifyingQuestions';
 import { ClarifyingPrepLoader } from './ClarifyingPrepLoader';
 import { DrillDownThread } from './DrillDownThread';
-import { ContextChip } from './ContextChip';
+import { ComposerContextCard } from './ContextChip';
 import { PinnedInsight } from './PinnedInsight';
 
 function truncate(text: string, max: number): string {
@@ -21,7 +21,7 @@ function UserBubble({ text }: { text: string }) {
     <div className="flex justify-end">
       <div
         className="max-w-[85%] bg-sage-soft px-3.5 py-2.5 text-sm font-medium text-ink"
-        style={{ borderRadius: '16px 16px 16px 0px' }}
+        style={{ borderRadius: '16px 16px 0px 16px' }}
       >
         {text}
       </div>
@@ -30,25 +30,28 @@ function UserBubble({ text }: { text: string }) {
 }
 
 function TurnContextNote({ turn }: { turn: ConversationTurn }) {
-  if (turn.contextIds.length === 0) return null;
+  const items = turn.contextItems ?? [];
+  if (items.length === 0) return null;
+
   const unusedMetrics = turn.contextIds
     .filter(isMetricId)
     .filter((id) => !turn.usedContextIds.includes(id));
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap gap-1.5">
-        {turn.contextIds.map((id) => (
-          <span
-            key={id}
-            className={isMetricId(id) && unusedMetrics.includes(id) ? 'opacity-40' : ''}
-          >
-            <ContextChip title={getContextItem(id).title} />
-          </span>
+    <div className="flex flex-col items-end gap-1.5">
+      <div className="flex max-w-full flex-wrap justify-end gap-2">
+        {items.map((item) => (
+          <ComposerContextCard
+            key={item.id}
+            title={item.title}
+            timeframeLabel={item.timeframeLabel}
+            chartKind={item.chartKind}
+            dimmed={isMetricId(item.id) && unusedMetrics.includes(item.id)}
+          />
         ))}
       </div>
       {unusedMetrics.length > 0 && turn.usedContextIds.length > 0 && (
-        <p className="text-[11px] leading-relaxed text-ink-faint">
+        <p className="max-w-[85%] text-right text-[11px] leading-relaxed text-ink-faint">
           Used {turn.usedContextIds.map((id) => getKpi(id).title).join(' + ')} for this answer —{' '}
           {unusedMetrics.map((id) => getKpi(id).title).join(', ')} didn't look directly relevant to
           the question.
@@ -66,8 +69,7 @@ export function ConversationTurnCard({
   isLatest: boolean;
 }) {
   const {
-    giveFeedback,
-    markDoesNotHold,
+    submitResponseFeedback,
     startDrillDown,
     reopenPath,
     saveRepeatable,
@@ -89,6 +91,7 @@ export function ConversationTurnCard({
     return (
       <div className="flex flex-col gap-3 border-b border-border-soft pb-5 last:border-b-0 last:pb-0">
         <UserBubble text={turn.question} />
+        <TurnContextNote turn={turn} />
         <PinnedInsight
           key={`pin-b-${pinTrigger}-${turn.id}`}
           headline={pinHeadline}
@@ -139,12 +142,20 @@ export function ConversationTurnCard({
               answer={turn.answer}
               stage={turn.stage}
               revealedFindingIds={turn.revealedFindingIds}
-              revisingFindingIds={turn.revisingFindingIds}
               showMetricTags={showMetricTags}
-              onThumbsUp={(findingId) => giveFeedback(turn.id, findingId, 'up')}
-              onDoesNotHold={(findingId) => markDoesNotHold(turn.id, findingId)}
+              responseFeedback={turn.responseFeedback}
               onInvestigate={(finding) => startDrillDown(turn.id, finding)}
               onSaveRepeatable={() => saveRepeatable(turn.question, turn.usedContextIds)}
+              onResponseThumbsUp={() =>
+                submitResponseFeedback(turn.id, { value: 'up' })
+              }
+              onResponseThumbsDown={(reasons, comment) =>
+                submitResponseFeedback(turn.id, {
+                  value: 'down',
+                  reasons,
+                  comment: comment || undefined,
+                })
+              }
             />
           )}
 

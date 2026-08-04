@@ -1,18 +1,18 @@
 import type {
   Answer,
+  AttachedContextItem,
   ClarifyingResponse,
   ContextId,
   ConversationTurn,
   DrillDown,
-  Finding,
-  FeedbackValue,
   PinTrigger,
+  ResponseFeedback,
   SavedCheck,
   Stage,
 } from '../types';
 
 export interface SessionState {
-  attachedContext: ContextId[];
+  attachedContext: AttachedContextItem[];
   panelOpen: boolean;
   turns: ConversationTurn[];
   savedChecks: SavedCheck[];
@@ -32,7 +32,7 @@ export const initialSessionState: SessionState = {
 };
 
 export type SessionAction =
-  | { type: 'ADD_CONTEXT'; id: ContextId }
+  | { type: 'ADD_CONTEXT'; item: AttachedContextItem }
   | { type: 'REMOVE_CONTEXT'; id: ContextId }
   | { type: 'SET_PANEL_OPEN'; open: boolean }
   | { type: 'CREATE_TURN'; turn: ConversationTurn }
@@ -44,19 +44,10 @@ export type SessionAction =
   | { type: 'SET_ACTIVE_PATH'; turnId: string; path: string[] }
   | { type: 'STOP_TURN'; turnId: string; path?: string[] }
   | {
-      type: 'SET_FEEDBACK';
+      type: 'SET_RESPONSE_FEEDBACK';
       turnId: string;
-      findingId: string;
       path?: string[];
-      value: FeedbackValue;
-    }
-  | { type: 'START_REVISION'; turnId: string; findingId: string; path?: string[] }
-  | {
-      type: 'APPLY_REVISION';
-      turnId: string;
-      findingId: string;
-      path?: string[];
-      patch: Partial<Finding>;
+      feedback: ResponseFeedback;
     }
   | { type: 'ADD_SAVED_CHECK'; check: SavedCheck }
   | { type: 'SHOW_TOAST'; message: string }
@@ -66,14 +57,6 @@ export type SessionAction =
   | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer }
   | { type: 'CLEAR_CONVERSATION' }
   | { type: 'SET_PIN_TRIGGER'; pinTrigger: PinTrigger };
-
-function mapFindings(
-  findings: Finding[],
-  findingId: string,
-  updater: (finding: Finding) => Finding,
-): Finding[] {
-  return findings.map((f) => (f.id === findingId ? updater(f) : f));
-}
 
 /** Recursively locates the node at `path` within a drill-down tree and applies `updater`. */
 function updateNodeAtPath(nodes: DrillDown[], path: string[], updater: (node: DrillDown) => DrillDown): DrillDown[] {
@@ -92,15 +75,6 @@ function insertChildAtPath(nodes: DrillDown[], parentPath: string[], child: Dril
   return updateNodeAtPath(nodes, parentPath, (node) => ({ ...node, drillDowns: [...node.drillDowns, child] }));
 }
 
-function updateNodeFindings(
-  node: DrillDown,
-  findingId: string,
-  updater: (finding: Finding) => Finding,
-): DrillDown {
-  if (!node.answer) return node;
-  return { ...node, answer: { ...node.answer, findings: mapFindings(node.answer.findings, findingId, updater) } };
-}
-
 function updateTurn(
   state: SessionState,
   turnId: string,
@@ -112,26 +86,25 @@ function updateTurn(
   };
 }
 
-function addRevisingId(ids: string[], findingId: string): string[] {
-  return ids.includes(findingId) ? ids : [...ids, findingId];
-}
-
 let toastCounter = 0;
 
 export function researchReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
     case 'ADD_CONTEXT': {
-      if (state.attachedContext.includes(action.id)) return state;
-      return { ...state, attachedContext: [...state.attachedContext, action.id] };
+      if (state.attachedContext.some((item) => item.id === action.item.id)) return state;
+      return { ...state, attachedContext: [...state.attachedContext, action.item] };
     }
     case 'REMOVE_CONTEXT': {
-      return { ...state, attachedContext: state.attachedContext.filter((id) => id !== action.id) };
+      return {
+        ...state,
+        attachedContext: state.attachedContext.filter((item) => item.id !== action.id),
+      };
     }
     case 'SET_PANEL_OPEN': {
       return { ...state, panelOpen: action.open };
     }
     case 'CREATE_TURN': {
-      return { ...state, turns: [...state.turns, action.turn] };
+      return { ...state, turns: [...state.turns, action.turn], attachedContext: [] };
     }
     case 'SET_TURN_STAGE': {
       return updateTurn(state, action.turnId, (t) => ({
@@ -177,55 +150,16 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
         drillDowns: updateNodeAtPath(t.drillDowns, action.path!, (d) => ({ ...d, stopped: true })),
       }));
     }
-    case 'SET_FEEDBACK': {
+    case 'SET_RESPONSE_FEEDBACK': {
       return updateTurn(state, action.turnId, (t) => {
         if (!action.path || action.path.length === 0) {
-          if (!t.answer) return t;
-          return {
-            ...t,
-            answer: { ...t.answer, findings: mapFindings(t.answer.findings, action.findingId, (f) => ({ ...f, feedback: action.value })) },
-          };
-        }
-        return {
-          ...t,
-          drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) =>
-            updateNodeFindings(d, action.findingId, (f) => ({ ...f, feedback: action.value })),
-          ),
-        };
-      });
-    }
-    case 'START_REVISION': {
-      return updateTurn(state, action.turnId, (t) => {
-        if (!action.path || action.path.length === 0) {
-          return { ...t, revisingFindingIds: addRevisingId(t.revisingFindingIds, action.findingId) };
+          return { ...t, responseFeedback: action.feedback };
         }
         return {
           ...t,
           drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) => ({
             ...d,
-            revisingFindingIds: addRevisingId(d.revisingFindingIds, action.findingId),
-          })),
-        };
-      });
-    }
-    case 'APPLY_REVISION': {
-      return updateTurn(state, action.turnId, (t) => {
-        if (!action.path || action.path.length === 0) {
-          if (!t.answer) return t;
-          return {
-            ...t,
-            answer: {
-              ...t.answer,
-              findings: mapFindings(t.answer.findings, action.findingId, (f) => ({ ...f, ...action.patch })),
-            },
-            revisingFindingIds: t.revisingFindingIds.filter((id) => id !== action.findingId),
-          };
-        }
-        return {
-          ...t,
-          drillDowns: updateNodeAtPath(t.drillDowns, action.path, (d) => ({
-            ...updateNodeFindings(d, action.findingId, (f) => ({ ...f, ...action.patch })),
-            revisingFindingIds: d.revisingFindingIds.filter((id) => id !== action.findingId),
+            responseFeedback: action.feedback,
           })),
         };
       });

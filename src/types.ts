@@ -10,6 +10,17 @@ export function isMetricId(id: ContextId): id is MetricId {
 
 export type ChartKind = 'sparkline' | 'donut' | 'barStrip' | 'steppedLine';
 
+/** Chart glyph used on attached context cards (KPIs + dimension cards). */
+export type ContextChartKind = ChartKind | 'compareBars';
+
+/** Chart attached to the composer, with subtitle frozen at attach time. */
+export interface AttachedContextItem {
+  id: ContextId;
+  title: string;
+  timeframeLabel: string;
+  chartKind: ContextChartKind;
+}
+
 export interface SeriesPoint {
   label: string;
   value: number;
@@ -52,7 +63,19 @@ export type FindingKind = 'evidence' | 'assumption' | 'unknown';
 
 export type Confidence = 'high' | 'medium' | 'low';
 
-export type FeedbackValue = 'up' | 'down' | null;
+export type ResponseFeedbackReason =
+  | 'inaccurate'
+  | 'missedAsk'
+  | 'uncertainty'
+  | 'citation'
+  | 'privacy'
+  | 'other';
+
+export interface ResponseFeedback {
+  value: 'up' | 'down';
+  reasons?: ResponseFeedbackReason[];
+  comment?: string;
+}
 
 export interface Finding {
   id: string;
@@ -62,7 +85,6 @@ export interface Finding {
   confidence?: Confidence;
   sourceIds: string[];
   investigateQuestion?: string;
-  feedback?: FeedbackValue;
   revised?: boolean;
   revisedNote?: string;
 }
@@ -109,7 +131,7 @@ export interface DrillDown {
   stopped?: boolean;
   answer?: Answer;
   revealedFindingIds: string[];
-  revisingFindingIds: string[];
+  responseFeedback?: ResponseFeedback;
   /** Nested investigations spawned from an open question within this drill-down. */
   drillDowns: DrillDown[];
 }
@@ -146,6 +168,8 @@ export interface ConversationTurn {
   id: string;
   question: string;
   contextIds: ContextId[];
+  /** Snapshot of composer context cards at submit time (frozen titles/subtitles). */
+  contextItems: AttachedContextItem[];
   /** Subset of attached metrics the agent judged relevant to this specific question. */
   usedContextIds: MetricId[];
   stage: Stage;
@@ -155,7 +179,7 @@ export interface ConversationTurn {
   drillDowns: DrillDown[];
   /** Ids of drill-downs from root to the currently viewed nested thread, e.g. ['d1', 'd1-1']. */
   activePath: string[];
-  revisingFindingIds: string[];
+  responseFeedback?: ResponseFeedback;
   /** Clarifying round before diagnosis (Claude-style follow-ups). */
   phase?: TurnPhase;
   clarifying?: ClarifyingRound;

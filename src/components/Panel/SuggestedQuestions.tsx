@@ -12,7 +12,7 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
   if (attachedContext.length === 0) return null;
 
   const questions = Array.from(
-    new Set(attachedContext.flatMap((id) => getContextItem(id).suggestedQuestions)),
+    new Set(attachedContext.flatMap((item) => getContextItem(item.id).suggestedQuestions)),
   ).slice(0, 3);
   if (questions.length === 0) return null;
 

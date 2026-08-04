@@ -23,7 +23,7 @@ interface DrillDownThreadProps {
  * breadcrumb trail and depth indicator intact.
  */
 export function DrillDownThread({ turnId, node, path, activePath, trail, parentAnswer, showMetricTags }: DrillDownThreadProps) {
-  const { giveFeedback, markDoesNotHold, startDrillDown, backToParent, reopenPath, pinTrigger } = useResearch();
+  const { submitResponseFeedback, startDrillDown, backToParent, reopenPath, pinTrigger } = useResearch();
 
   const nextId = activePath[path.length];
   const activeChild = nextId ? node.drillDowns.find((d) => d.id === nextId) : undefined;
@@ -69,11 +69,19 @@ export function DrillDownThread({ turnId, node, path, activePath, trail, parentA
           answer={node.answer}
           stage={node.stage}
           revealedFindingIds={node.revealedFindingIds}
-          revisingFindingIds={node.revisingFindingIds}
           showMetricTags={showMetricTags}
-          onThumbsUp={(findingId) => giveFeedback(turnId, findingId, 'up', path)}
-          onDoesNotHold={(findingId) => markDoesNotHold(turnId, findingId, path)}
+          responseFeedback={node.responseFeedback}
           onInvestigate={(finding) => startDrillDown(turnId, finding, path)}
+          onResponseThumbsUp={() =>
+            submitResponseFeedback(turnId, { value: 'up' }, path)
+          }
+          onResponseThumbsDown={(reasons, comment) =>
+            submitResponseFeedback(
+              turnId,
+              { value: 'down', reasons, comment: comment || undefined },
+              path,
+            )
+          }
         />
       )}
 

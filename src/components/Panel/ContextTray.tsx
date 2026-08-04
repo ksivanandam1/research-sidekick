@@ -1,20 +1,25 @@
-import { getContextItem } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
-import { ContextChip } from './ContextChip';
+import { ComposerContextCard } from './ContextChip';
 
-export function ContextTray() {
+/** Horizontal strip of attached chart cards inside the composer. */
+export function ComposerContextStrip() {
   const { attachedContext, removeContext } = useResearch();
 
-  if (attachedContext.length === 0) {
-    return <p className="text-xs text-ink-faint">No charts attached yet — click + on a card.</p>;
-  }
+  if (attachedContext.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {attachedContext.map((id) => {
-        const item = getContextItem(id);
-        return <ContextChip key={id} title={item.title} onRemove={() => removeContext(id)} />;
-      })}
+    <div className="-mx-0.5 mb-2.5 overflow-x-auto pb-0.5">
+      <div className="flex w-max min-w-full gap-2 px-0.5">
+        {attachedContext.map((item) => (
+          <ComposerContextCard
+            key={item.id}
+            title={item.title}
+            timeframeLabel={item.timeframeLabel}
+            chartKind={item.chartKind}
+            onRemove={() => removeContext(item.id)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

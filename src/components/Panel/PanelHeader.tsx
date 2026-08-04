@@ -1,5 +1,4 @@
 import { ChevronDown, Menu, Share2, SquarePen, X } from 'lucide-react';
-import { ContextTray } from './ContextTray';
 
 interface PanelHeaderProps {
   onClose: () => void;
@@ -58,10 +57,6 @@ export function PanelHeader({ onClose, onShare, onNewChat, shareDisabled }: Pane
             <X size={16} strokeWidth={1.75} />
           </button>
         </div>
-      </div>
-
-      <div className="mt-2.5 px-1.5">
-        <ContextTray />
       </div>
     </div>
   );

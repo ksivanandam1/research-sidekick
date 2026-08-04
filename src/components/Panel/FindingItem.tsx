@@ -4,25 +4,14 @@ import type { Finding } from '../../types';
 import { getKpi, getSource } from '../../data/mockData';
 import { CitationChip } from './CitationChip';
 import { SourcePreview } from './SourcePreview';
-import { FeedbackControls } from './FeedbackControls';
 
 interface FindingItemProps {
   finding: Finding;
-  isRevising: boolean;
   showMetricTag: boolean;
-  onThumbsUp: () => void;
-  onDoesNotHold: () => void;
   onInvestigate?: () => void;
 }
 
-export function FindingItem({
-  finding,
-  isRevising,
-  showMetricTag,
-  onThumbsUp,
-  onDoesNotHold,
-  onInvestigate,
-}: FindingItemProps) {
+export function FindingItem({ finding, showMetricTag, onInvestigate }: FindingItemProps) {
   const [openSourceIds, setOpenSourceIds] = useState<string[]>([]);
 
   function toggleSource(id: string) {
@@ -62,9 +51,6 @@ export function FindingItem({
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div>
-          {finding.kind === 'assumption' && !finding.revised && (
-            <FeedbackControls finding={finding} isRevising={isRevising} onThumbsUp={onThumbsUp} onDoesNotHold={onDoesNotHold} />
-          )}
           {finding.revised && finding.revisedNote && (
             <p className="inline-flex items-center gap-1 text-[11px] font-medium text-sage">
               <RefreshCcw size={11} />
