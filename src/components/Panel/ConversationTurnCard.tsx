@@ -3,12 +3,14 @@ import type { ConversationTurn } from '../../types';
 import { isMetricId } from '../../types';
 import { getContextItem, getKpi } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
+import { getAnswerHeadline, getPinExpandDetail } from '../../utils/answerPin';
 import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
 import { ClarifyingQuestions } from './ClarifyingQuestions';
 import { ClarifyingPrepLoader } from './ClarifyingPrepLoader';
 import { DrillDownThread } from './DrillDownThread';
 import { ContextChip } from './ContextChip';
+import { PinnedInsight } from './PinnedInsight';
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
@@ -56,7 +58,13 @@ function TurnContextNote({ turn }: { turn: ConversationTurn }) {
   );
 }
 
-export function ConversationTurnCard({ turn }: { turn: ConversationTurn }) {
+export function ConversationTurnCard({
+  turn,
+  isLatest,
+}: {
+  turn: ConversationTurn;
+  isLatest: boolean;
+}) {
   const {
     giveFeedback,
     markDoesNotHold,
@@ -64,6 +72,7 @@ export function ConversationTurnCard({ turn }: { turn: ConversationTurn }) {
     reopenPath,
     saveRepeatable,
     answerClarifying,
+    pinTrigger,
   } = useResearch();
   const showMetricTags = turn.usedContextIds.length > 1;
   const rootDrillDown =
@@ -73,6 +82,22 @@ export function ConversationTurnCard({ turn }: { turn: ConversationTurn }) {
   const clarifying = turn.clarifying;
   const isClarifying = turn.phase === 'clarifying' && !!clarifying;
   const clarifyingLoading = isClarifying && turn.stage !== 'ready';
+  const collapseToPin = pinTrigger === 'newTurn' && !isLatest && !!turn.answer;
+  const pinHeadline = turn.answer ? getAnswerHeadline(turn.answer) : null;
+
+  if (collapseToPin && pinHeadline && turn.answer) {
+    return (
+      <div className="flex flex-col gap-3 border-b border-border-soft pb-5 last:border-b-0 last:pb-0">
+        <UserBubble text={turn.question} />
+        <PinnedInsight
+          key={`pin-b-${pinTrigger}-${turn.id}`}
+          headline={pinHeadline}
+          pinSummary={turn.answer.pinSummary}
+          expandDetail={getPinExpandDetail(turn.answer)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 border-b border-border-soft pb-5 last:border-b-0 last:pb-0">

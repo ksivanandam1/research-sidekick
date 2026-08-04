@@ -45,8 +45,12 @@ export function ChatPanel() {
           <EmptyState />
         ) : (
           <div className="flex flex-col gap-5">
-            {turns.map((turn) => (
-              <ConversationTurnCard key={turn.id} turn={turn} />
+            {turns.map((turn, index) => (
+              <ConversationTurnCard
+                key={turn.id}
+                turn={turn}
+                isLatest={index === turns.length - 1}
+              />
             ))}
           </div>
         )}
