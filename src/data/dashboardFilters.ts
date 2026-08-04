@@ -1,13 +1,15 @@
 import type { KpiDefinition, MetricId, SeriesPoint } from '../types';
 import { KPI_DEFINITIONS } from './mockData';
 
-export type TimeframePreset = 'thisMonth' | 'thisQuarter' | 'thisYear';
+export type TimeframePreset = 'thisMonth' | 'thisQuarter' | 'thisYear' | 'custom';
 /** Scope filter on the canvas — tiers by default, plus an all-products view. */
 export type ProductFilterId = 'allTiers' | 'starter' | 'growth' | 'pro' | 'allProducts';
 
 export interface TimeframeOption {
   id: TimeframePreset;
   label: string;
+  /** Resolved calendar range shown under the preset; null for Custom until applied. */
+  resolvedRange: string | null;
 }
 
 export interface ProductOption {
@@ -16,9 +18,10 @@ export interface ProductOption {
 }
 
 export const TIMEFRAME_OPTIONS: TimeframeOption[] = [
-  { id: 'thisMonth', label: 'This month' },
-  { id: 'thisQuarter', label: 'This quarter' },
-  { id: 'thisYear', label: 'This year' },
+  { id: 'thisMonth', label: 'This month', resolvedRange: 'Aug 1 – Aug 31, 2026' },
+  { id: 'thisQuarter', label: 'This quarter', resolvedRange: 'Jul 1 – Sep 30, 2026' },
+  { id: 'thisYear', label: 'This year', resolvedRange: 'Jan 1 – Dec 31, 2026' },
+  { id: 'custom', label: 'Custom', resolvedRange: null },
 ];
 
 export const PRODUCT_OPTIONS: ProductOption[] = [
@@ -89,7 +92,8 @@ const KPI_SLICES: Partial<Record<string, Partial<Record<MetricId, KpiSlice>>>> =
 };
 
 function sliceKey(timeframe: TimeframePreset, product: ProductFilterId): string {
-  return `${timeframe}:${product}`;
+  const tf = timeframe === 'custom' ? 'thisQuarter' : timeframe;
+  return `${tf}:${product}`;
 }
 
 export function resolveKpis(timeframe: TimeframePreset, product: ProductFilterId): KpiDefinition[] {
@@ -113,4 +117,15 @@ export function resolveKpis(timeframe: TimeframePreset, product: ProductFilterId
       anomaly: undefined,
     };
   });
+}
+
+export function formatCustomRange(from: string, to: string): string | null {
+  if (!from || !to) return null;
+  const fmt = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  return `${fmt(from)} – ${fmt(to)}`;
 }

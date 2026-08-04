@@ -34,6 +34,8 @@ export function InsightsCanvas() {
   const { attachedContext, addContext, removeContext, showToast } = useResearch();
   const [timeframe, setTimeframe] = useState<TimeframePreset>(DEFAULT_TIMEFRAME);
   const [product, setProduct] = useState<ProductFilterId>(DEFAULT_PRODUCT);
+  const [customFrom, setCustomFrom] = useState('2026-07-01');
+  const [customTo, setCustomTo] = useState('2026-09-30');
 
   const kpis = useMemo(() => resolveKpis(timeframe, product), [timeframe, product]);
   const byId = useMemo(() => Object.fromEntries(kpis.map((k) => [k.id, k])) as Record<MetricId, (typeof kpis)[0]>, [kpis]);
@@ -72,13 +74,22 @@ export function InsightsCanvas() {
         </div>
       </header>
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <TimeframeControl value={timeframe} onChange={setTimeframe} />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <TimeframeControl
+          value={timeframe}
+          onChange={setTimeframe}
+          customFrom={customFrom}
+          customTo={customTo}
+          onCustomChange={(from, to) => {
+            setCustomFrom(from);
+            setCustomTo(to);
+          }}
+        />
         <ProductFilter value={product} onChange={setProduct} />
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {ROW_ONE.map((id) => (
             <KpiCard
               key={id}
@@ -91,7 +102,7 @@ export function InsightsCanvas() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {ROW_TWO.map((id) => (
             <KpiCard
               key={id}

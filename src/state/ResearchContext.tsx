@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
-import type { ContextId, ConversationTurn, DrillDown, Finding, FeedbackValue, MetricId, SavedCheck } from '../types';
+import type { ContextId, ConversationTurn, DrillDown, Finding, FeedbackValue, MetricId, PinTrigger, SavedCheck } from '../types';
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
@@ -26,10 +26,13 @@ interface ResearchContextValue {
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
+  pinTrigger: PinTrigger;
+  setPinTrigger: (pinTrigger: PinTrigger) => void;
   addContext: (id: ContextId, opts?: { prefill?: string }) => void;
   removeContext: (id: ContextId) => void;
   openPanel: () => void;
   closePanel: () => void;
+  startNewChat: () => void;
   consumePrefill: () => void;
   submitQuestion: (question: string) => void;
   answerClarifying: (turnId: string, optionId: string, customLabel?: string) => void;
@@ -55,7 +58,12 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
 
   const openPanel = useCallback(() => dispatch({ type: 'SET_PANEL_OPEN', open: true }), []);
   const closePanel = useCallback(() => dispatch({ type: 'SET_PANEL_OPEN', open: false }), []);
+  const startNewChat = useCallback(() => dispatch({ type: 'CLEAR_CONVERSATION' }), []);
   const consumePrefill = useCallback(() => dispatch({ type: 'SET_PENDING_PREFILL', text: null }), []);
+  const setPinTrigger = useCallback(
+    (pinTrigger: PinTrigger) => dispatch({ type: 'SET_PIN_TRIGGER', pinTrigger }),
+    [],
+  );
 
   const addContext = useCallback(
     (id: ContextId, opts?: { prefill?: string }) => {
@@ -265,10 +273,13 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       savedChecks: state.savedChecks,
       toast: state.toast,
       pendingPrefill: state.pendingPrefill,
+      pinTrigger: state.pinTrigger,
+      setPinTrigger,
       addContext,
       removeContext,
       openPanel,
       closePanel,
+      startNewChat,
       consumePrefill,
       submitQuestion,
       answerClarifying,
@@ -288,7 +299,9 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       removeContext,
       openPanel,
       closePanel,
+      startNewChat,
       consumePrefill,
+      setPinTrigger,
       submitQuestion,
       answerClarifying,
       startDrillDown,

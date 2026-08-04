@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
+import { PinTriggerToggle } from './PinTriggerToggle';
 import { SuggestedQuestions } from './SuggestedQuestions';
 
 export function FollowUpInput() {
@@ -24,6 +25,7 @@ export function FollowUpInput() {
 
   return (
     <div className="border-t border-border bg-surface px-5 py-3">
+      <PinTriggerToggle />
       {showSuggestions && <SuggestedQuestions onSelect={(q) => handleSubmit(q)} />}
       <form
         onSubmit={(e) => {

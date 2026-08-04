@@ -4,28 +4,34 @@
   --font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* Surfaces */
-  --color-canvas: #f6f3ed;
+  --color-canvas: #f6f6f6;
   --color-surface: #ffffff;
-  --color-surface-soft: #fbf9f4;
-  --color-border: #e7e1d4;
-  --color-border-soft: #efe9dc;
+  --color-surface-soft: #f0f0f0;
+  --color-border: #e5e5e5;
+  --color-border-soft: #eeeeee;
 
   /* Ink */
   --color-ink: #24211b;
   --color-ink-soft: #6b6355;
   --color-ink-faint: #a29a89;
 
+  /* Chart / accent palette */
+  --color-chart-1: #6d8ffe;
+  --color-chart-2: #ff5413;
+  --color-chart-3: #01b183;
+  --color-card-selected: #797878;
+
   /* Accents: kept low-saturation / understated */
-  --color-sage: #4f7a5c;
-  --color-sage-soft: #e6ede4;
+  --color-sage: #01b183;
+  --color-sage-soft: #e5f7f1;
   --color-amber: #a97a2f;
   --color-amber-soft: #f4ead6;
-  --color-terracotta: #ae5b45;
-  --color-terracotta-soft: #f4e2da;
+  --color-terracotta: #ff5413;
+  --color-terracotta-soft: #ffe8e0;
   --color-fog: #736c60;
-  --color-fog-soft: #ecE8de;
-  --color-ocean: #3f6b74;
-  --color-ocean-soft: #e2ebec;
+  --color-fog-soft: #f0f0f0;
+  --color-ocean: #6d8ffe;
+  --color-ocean-soft: #e8eeff;
 
   --shadow-soft: 0 1px 2px rgba(36, 33, 27, 0.04), 0 10px 30px -12px rgba(36, 33, 27, 0.12);
   --shadow-soft-lg: 0 2px 4px rgba(36, 33, 27, 0.05), 0 24px 48px -16px rgba(36, 33, 27, 0.18);
@@ -88,3 +94,37 @@ body {
   color: transparent;
   animation: thought-shimmer 1.6s linear infinite;
 }
+
+/* Horizontal DNA loader — two strands + pulsing rungs */
+@keyframes dna-strand-wave {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes dna-rung-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.dna-loader-strand {
+  animation: dna-strand-wave 1.15s ease-in-out infinite;
+}
+
+.dna-loader-strand-b {
+  animation-delay: 0.575s;
+}
+
+.dna-loader-rung {
+  animation: dna-rung-pulse 1.15s ease-in-out infinite;
+}
+

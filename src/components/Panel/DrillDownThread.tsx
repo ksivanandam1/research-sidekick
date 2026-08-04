@@ -1,8 +1,10 @@
-import type { DrillDown } from '../../types';
+import type { Answer, DrillDown } from '../../types';
 import { useResearch } from '../../state/ResearchContext';
+import { getAnswerHeadline, getPinExpandDetail } from '../../utils/answerPin';
 import { Breadcrumbs } from './Breadcrumbs';
 import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
+import { PinnedInsight } from './PinnedInsight';
 
 interface DrillDownThreadProps {
   turnId: string;
@@ -10,6 +12,7 @@ interface DrillDownThreadProps {
   path: string[];
   activePath: string[];
   trail: string[];
+  parentAnswer?: Answer;
   showMetricTags: boolean;
 }
 
@@ -19,8 +22,8 @@ interface DrillDownThreadProps {
  * node's own answer — giving unlimited nesting depth while keeping each level's
  * breadcrumb trail and depth indicator intact.
  */
-export function DrillDownThread({ turnId, node, path, activePath, trail, showMetricTags }: DrillDownThreadProps) {
-  const { giveFeedback, markDoesNotHold, startDrillDown, backToParent, reopenPath } = useResearch();
+export function DrillDownThread({ turnId, node, path, activePath, trail, parentAnswer, showMetricTags }: DrillDownThreadProps) {
+  const { giveFeedback, markDoesNotHold, startDrillDown, backToParent, reopenPath, pinTrigger } = useResearch();
 
   const nextId = activePath[path.length];
   const activeChild = nextId ? node.drillDowns.find((d) => d.id === nextId) : undefined;
@@ -33,15 +36,25 @@ export function DrillDownThread({ turnId, node, path, activePath, trail, showMet
         path={[...path, activeChild.id]}
         activePath={activePath}
         trail={[...trail, node.question]}
+        parentAnswer={node.answer}
         showMetricTags={showMetricTags}
       />
     );
   }
 
   const otherDrillDowns = node.drillDowns;
+  const parentHeadline = parentAnswer ? getAnswerHeadline(parentAnswer) : null;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border-soft bg-surface-soft p-3">
+      {pinTrigger === 'drilldown' && parentHeadline && parentAnswer && (
+        <PinnedInsight
+          key={`pin-a-${pinTrigger}-${parentHeadline}`}
+          headline={parentHeadline}
+          pinSummary={parentAnswer.pinSummary}
+          expandDetail={getPinExpandDetail(parentAnswer)}
+        />
+      )}
       <Breadcrumbs
         trail={trail}
         activeLabel={node.question}

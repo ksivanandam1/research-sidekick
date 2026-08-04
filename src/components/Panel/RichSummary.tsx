@@ -1,35 +1,45 @@
 import type { ReactNode } from 'react';
 import { Compass } from 'lucide-react';
+import type { Finding } from '../../types';
+import { InlineCitation } from './InlineCitation';
 
-function renderInline(text: string): ReactNode[] {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+function renderInline(text: string, citations: Finding[]): ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|\[\d+\])/g);
   return parts.map((part, i) => {
+    if (!part) return null;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <strong key={i} className="font-semibold text-ink">
-          {part.slice(2, -2)}
+          {renderInline(part.slice(2, -2), citations)}
         </strong>
       );
+    }
+    const cite = part.match(/^\[(\d+)\]$/);
+    if (cite) {
+      const number = Number(cite[1]);
+      const finding = citations[number - 1];
+      if (!finding) return <span key={i}>{part}</span>;
+      return <InlineCitation key={i} number={number} finding={finding} />;
     }
     return <span key={i}>{part}</span>;
   });
 }
 
-function renderBlock(block: string, key: number) {
+function renderBlock(block: string, key: number, citations: Finding[]) {
   const trimmed = block.trim();
   if (!trimmed) return null;
 
   if (trimmed.startsWith('## ')) {
     return (
-      <h2 key={key} className="text-sm font-semibold leading-snug text-ink">
-        {renderInline(trimmed.slice(3))}
+      <h2 key={key} className="text-lg font-semibold leading-snug text-ink">
+        {renderInline(trimmed.slice(3), citations)}
       </h2>
     );
   }
   if (trimmed.startsWith('### ')) {
     return (
       <h3 key={key} className="text-sm font-semibold leading-snug text-ink">
-        {renderInline(trimmed.slice(4))}
+        {renderInline(trimmed.slice(4), citations)}
       </h3>
     );
   }
@@ -44,9 +54,11 @@ function renderBlock(block: string, key: number) {
       >
         <Compass size={14} className="mt-0.5 shrink-0 text-ocean" />
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-ocean">{titleLine}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ocean">
+            {renderInline(titleLine, citations)}
+          </p>
           {body ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{renderInline(body)}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{renderInline(body, citations)}</p>
           ) : null}
         </div>
       </div>
@@ -61,7 +73,7 @@ function renderBlock(block: string, key: number) {
         {lines
           .filter((line) => line.trim())
           .map((line, i) => (
-            <li key={i}>{renderInline(line.replace(/^\d+\.\s*/, ''))}</li>
+            <li key={i}>{renderInline(line.replace(/^\d+\.\s*/, ''), citations)}</li>
           ))}
       </ol>
     );
@@ -69,19 +81,21 @@ function renderBlock(block: string, key: number) {
 
   return (
     <p key={key} className="text-sm font-normal leading-relaxed text-ink">
-      {renderInline(trimmed)}
+      {renderInline(trimmed, citations)}
     </p>
   );
 }
 
 interface RichSummaryProps {
   text: string;
+  /** Evidence findings in citation order — `[1]` maps to index 0. */
+  citations?: Finding[];
 }
 
-export function RichSummary({ text }: RichSummaryProps) {
+export function RichSummary({ text, citations = [] }: RichSummaryProps) {
   return (
     <div className="flex flex-col gap-3">
-      {text.split(/\n\n+/).map((block, i) => renderBlock(block, i))}
+      {text.split(/\n\n+/).map((block, i) => renderBlock(block, i, citations))}
     </div>
   );
 }

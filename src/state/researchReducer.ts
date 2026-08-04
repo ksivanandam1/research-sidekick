@@ -6,6 +6,7 @@ import type {
   DrillDown,
   Finding,
   FeedbackValue,
+  PinTrigger,
   SavedCheck,
   Stage,
 } from '../types';
@@ -17,6 +18,7 @@ export interface SessionState {
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
+  pinTrigger: PinTrigger;
 }
 
 export const initialSessionState: SessionState = {
@@ -26,6 +28,7 @@ export const initialSessionState: SessionState = {
   savedChecks: [],
   toast: null,
   pendingPrefill: null,
+  pinTrigger: 'drilldown',
 };
 
 export type SessionAction =
@@ -60,7 +63,9 @@ export type SessionAction =
   | { type: 'DISMISS_TOAST' }
   | { type: 'SET_PENDING_PREFILL'; text: string | null }
   | { type: 'RECORD_CLARIFYING_RESPONSE'; turnId: string; response: ClarifyingResponse }
-  | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer };
+  | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer }
+  | { type: 'CLEAR_CONVERSATION' }
+  | { type: 'SET_PIN_TRIGGER'; pinTrigger: PinTrigger };
 
 function mapFindings(
   findings: Finding[],
@@ -259,6 +264,12 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
         stage: 'analysing',
         revealedFindingIds: [],
       }));
+    }
+    case 'CLEAR_CONVERSATION': {
+      return { ...state, turns: [], pendingPrefill: null };
+    }
+    case 'SET_PIN_TRIGGER': {
+      return { ...state, pinTrigger: action.pinTrigger };
     }
     default:
       return state;
