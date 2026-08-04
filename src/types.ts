@@ -67,12 +67,36 @@ export interface Finding {
   revisedNote?: string;
 }
 
+export interface AnswerChartSeries {
+  label: string;
+  /** Current period value in $M */
+  actual: number;
+  /** Prior period value in $M */
+  prior: number;
+}
+
+export interface AnswerChart {
+  title: string;
+  subtitle?: string;
+  actualLabel?: string;
+  priorLabel?: string;
+  /** Series index highlighted by default (e.g. Outbound). */
+  defaultSelectedIndex?: number;
+  series: AnswerChartSeries[];
+}
+
+export type PinTrigger = 'drilldown' | 'newTurn';
+
 export interface Answer {
   summary: string;
+  /** Dedicated short blurb for the pin UI — authored, not derived from body. */
+  pinSummary?: string;
   findings: Finding[];
   nextCheck?: string;
   /** Overall answer confidence shown as a badge on the response. */
   confidence?: Confidence;
+  /** Optional interactive chart embedded in the chat response. */
+  chart?: AnswerChart;
 }
 
 export type Stage = 'idle' | 'analysing' | 'retrieving' | 'citing' | 'drafting' | 'ready';
