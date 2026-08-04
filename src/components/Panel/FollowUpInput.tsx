@@ -4,8 +4,9 @@ import { useResearch } from '../../state/ResearchContext';
 import { SuggestedQuestions } from './SuggestedQuestions';
 
 export function FollowUpInput() {
-  const { attachedContext, pendingPrefill, consumePrefill, submitQuestion } = useResearch();
+  const { attachedContext, pendingPrefill, consumePrefill, submitQuestion, turns } = useResearch();
   const [value, setValue] = useState('');
+  const showSuggestions = turns.length === 0;
 
   useEffect(() => {
     if (pendingPrefill) {
@@ -23,7 +24,7 @@ export function FollowUpInput() {
 
   return (
     <div className="border-t border-border bg-surface px-5 py-3">
-      <SuggestedQuestions onSelect={(q) => handleSubmit(q)} />
+      {showSuggestions && <SuggestedQuestions onSelect={(q) => handleSubmit(q)} />}
       <form
         onSubmit={(e) => {
           e.preventDefault();
