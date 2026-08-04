@@ -413,9 +413,9 @@ export const REVENUE_DIP_ANSWER: Answer = {
   summary: [
     "Here's a rundown on the Q3 revenue dip. I've highlighted where further validation is needed as I'm not able to access certain datasets.",
     '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
-    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**[1]. Year on year it is only **down 3%**[1]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3]. Starter, Growth, and Pro self-serve have not dipped[2].',
+    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**. Starter, Growth, and Pro self-serve have not dipped.',
     '### How I got here',
-    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality[1].\n2. Broke revenue down by tier. Only Pro moved, down 34%[2].\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[3][4].',
+    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable.',
     'We were able to diagnose the segment based on your tier and channel data.',
     '### Validation needed',
     [
@@ -425,18 +425,6 @@ export const REVENUE_DIP_ANSWER: Answer = {
   ].join('\n\n'),
   pinSummary:
     'Q3 missed forecast by 12%, but the drop is outbound Pro — not a broad decline across tiers.',
-  chart: {
-    title: 'Pro revenue by acquisition channel',
-    subtitle: 'Q3 actual vs Q2 prior — click a channel to focus',
-    actualLabel: 'Q3',
-    priorLabel: 'Q2',
-    defaultSelectedIndex: 1,
-    series: [
-      { label: 'Self-serve upgrade', actual: 0.42, prior: 0.43 },
-      { label: 'Outbound sales', actual: 0.28, prior: 0.55 },
-      { label: 'Partner-assisted', actual: 0.2, prior: 0.21 },
-    ],
-  },
   findings: [
     {
       id: 'revenue-e1',
