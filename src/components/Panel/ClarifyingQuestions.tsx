@@ -135,19 +135,22 @@ export function ClarifyingQuestions({
     <div className="flex flex-col gap-3">
       <p className="text-sm font-normal leading-relaxed text-ink">{intro}</p>
 
-      {responses.map((response) => {
-        const q = questions.find((item) => item.id === response.questionId);
-        return (
-          <div key={`${response.questionId}-${response.optionId}-${response.label}`} className="flex flex-col gap-2">
-            {q && (
-              <div className="rounded-xl border border-border-soft bg-surface-soft px-3 py-2.5">
-                <p className="text-sm font-normal text-ink">{q.prompt}</p>
-              </div>
-            )}
-            <UserBubble text={response.label} />
-          </div>
-        );
-      })}
+      {responses.length > 0 && (
+        <ol className="flex list-decimal flex-col gap-3 pl-4 marker:text-ink-faint">
+          {responses.map((response) => {
+            const q = questions.find((item) => item.id === response.questionId);
+            return (
+              <li
+                key={`${response.questionId}-${response.optionId}-${response.label}`}
+                className="flex flex-col gap-2 pl-1"
+              >
+                {q && <p className="text-sm font-normal leading-relaxed text-ink">{q.prompt}</p>}
+                <UserBubble text={response.label} />
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
       {showActiveCard && active && (
         <ActiveClarifyingCard
