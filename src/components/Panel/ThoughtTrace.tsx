@@ -66,7 +66,7 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
+          className="flex w-full items-center gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
         >
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <DnaLoader size={12} />
@@ -83,7 +83,7 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
+        className="inline-flex items-center gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
       >
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-faint">
           <CheckCircle2 size={12} className="text-sage" />
