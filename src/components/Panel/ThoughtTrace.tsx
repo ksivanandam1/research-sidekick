@@ -87,7 +87,7 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
       >
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-faint">
           <CheckCircle2 size={12} className="text-sage" />
-          Finished thinking · view trace
+          Analysed Q3 revenue decline
         </span>
         <ChevronDown size={13} className="shrink-0 text-ink-faint" />
       </button>
