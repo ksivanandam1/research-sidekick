@@ -136,20 +136,25 @@ export function ClarifyingQuestions({
       <p className="text-sm font-normal leading-relaxed text-ink">{intro}</p>
 
       {responses.length > 0 && (
-        <ol className="flex list-decimal flex-col gap-3 marker:text-ink-faint">
+        <div className="flex flex-col gap-3">
           {responses.map((response) => {
             const q = questions.find((item) => item.id === response.questionId);
+            const questionIndex = questions.findIndex((item) => item.id === response.questionId);
             return (
-              <li
+              <div
                 key={`${response.questionId}-${response.optionId}-${response.label}`}
                 className="flex flex-col gap-2"
               >
-                {q && <p className="text-sm font-normal leading-relaxed text-ink">{q.prompt}</p>}
+                {q && (
+                  <p className="text-sm font-normal leading-relaxed text-ink">
+                    {questionIndex + 1}. {q.prompt}
+                  </p>
+                )}
                 <UserBubble text={response.label} />
-              </li>
+              </div>
             );
           })}
-        </ol>
+        </div>
       )}
 
       {showActiveCard && active && (
