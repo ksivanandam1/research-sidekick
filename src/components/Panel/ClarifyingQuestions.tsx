@@ -136,7 +136,7 @@ export function ClarifyingQuestions({
       <p className="text-sm font-normal leading-relaxed text-ink">{intro}</p>
 
       {responses.length > 0 && (
-        <ol className="flex list-decimal flex-col gap-3 pl-4 marker:text-ink-faint">
+        <ol className="flex list-decimal flex-col gap-3 marker:text-ink-faint">
           {responses.map((response) => {
             const q = questions.find((item) => item.id === response.questionId);
             return (
