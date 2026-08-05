@@ -142,7 +142,7 @@ export function ClarifyingQuestions({
             return (
               <li
                 key={`${response.questionId}-${response.optionId}-${response.label}`}
-                className="flex flex-col gap-2 pl-1"
+                className="flex flex-col gap-2"
               >
                 {q && <p className="text-sm font-normal leading-relaxed text-ink">{q.prompt}</p>}
                 <UserBubble text={response.label} />
