@@ -130,13 +130,10 @@ export function ClarifyingQuestions({
 }: ClarifyingQuestionsProps) {
   const { intro, questions, currentIndex, responses } = clarifying;
   const active = currentIndex < questions.length ? questions[currentIndex] : null;
-  const showIntro = responses.length === 0;
 
   return (
     <div className="flex flex-col gap-3">
-      {showIntro && (
-        <p className="text-sm font-normal leading-relaxed text-ink">{intro}</p>
-      )}
+      <p className="text-sm font-normal leading-relaxed text-ink">{intro}</p>
 
       {responses.map((response) => {
         const q = questions.find((item) => item.id === response.questionId);
@@ -144,7 +141,7 @@ export function ClarifyingQuestions({
           <div key={`${response.questionId}-${response.optionId}-${response.label}`} className="flex flex-col gap-2">
             {q && (
               <div className="rounded-xl border border-border-soft bg-surface-soft px-3 py-2.5">
-                <p className="text-sm font-medium text-ink">{q.prompt}</p>
+                <p className="text-sm font-normal text-ink">{q.prompt}</p>
               </div>
             )}
             <UserBubble text={response.label} />
