@@ -102,7 +102,7 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
         className="flex items-center justify-between gap-2 pb-1 text-left"
       >
         <span className="text-[11px] font-medium text-ink-faint">
-          {isReady ? 'What the agent checked' : 'Thinking…'}
+          {isReady ? 'Analysed Q3 revenue decline' : 'Thinking…'}
         </span>
         <ChevronUp size={13} className="shrink-0 text-ink-faint" />
       </button>
