@@ -9,6 +9,7 @@ const STAGE_DELAY_MS: Record<Stage, number> = {
   retrieving: 1600,
   citing: 0,
   drafting: 2400,
+  linking: 1400,
   ready: 0,
 };
 
@@ -36,7 +37,7 @@ export interface RunRevisionJobArgs {
 /**
  * Simulates a mocked agent working through visible stages:
  * analysing -> retrieving -> citing (sources appear) -> drafting (prose + remaining
- * findings appear) -> ready. Also supports a smaller, localised "re-check" run used
+ * findings appear) -> linking -> ready. Also supports a smaller, localised "re-check" run used
  * when a user challenges a single assumption.
  */
 export function useAgentRun() {
@@ -78,6 +79,10 @@ export function useAgentRun() {
     onStage('drafting');
     onFindingsRevealed([...evidenceFindingIds, ...otherFindingIds]);
     await sleep(STAGE_DELAY_MS.drafting);
+    if (cancelled()) return;
+
+    onStage('linking');
+    await sleep(STAGE_DELAY_MS.linking);
     if (cancelled()) return;
 
     onStage('ready');

@@ -91,7 +91,7 @@ export function AnswerSection({
 }: AnswerSectionProps) {
   const summaryActive = stage === 'drafting';
   const summaryText = useTypewriter(answer.summary, summaryActive);
-  const summaryVisible = stage === 'drafting' || stage === 'ready';
+  const summaryVisible = stage === 'drafting' || stage === 'linking' || stage === 'ready';
   const isReady = stage === 'ready';
   const citations = answer.findings.filter((f) => f.kind === 'evidence');
 

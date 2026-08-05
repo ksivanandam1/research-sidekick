@@ -62,7 +62,7 @@ export function DrillDownThread({ turnId, node, path, activePath, trail, parentA
         onBack={() => backToParent(turnId, path)}
       />
       {node.answer && (
-        <ThoughtTrace answer={node.answer} stage={node.stage} revealedFindingIds={node.revealedFindingIds} stopped={node.stopped} />
+        <ThoughtTrace stage={node.stage} stopped={node.stopped} />
       )}
       {node.answer && (
         <AnswerSection

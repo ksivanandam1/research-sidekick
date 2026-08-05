@@ -1,17 +1,37 @@
 import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, CircleDashed, OctagonX } from 'lucide-react';
-import type { Answer, Stage } from '../../types';
-import { buildThoughtSteps } from '../../data/mockData';
+import type { Stage } from '../../types';
 import { DnaLoader } from './DnaLoader';
 
 interface ThoughtTraceProps {
-  answer: Answer;
   stage: Stage;
-  revealedFindingIds: string[];
   stopped?: boolean;
 }
 
 type StepStatus = 'pending' | 'running' | 'complete' | 'stopped';
+
+const THINKING_STEPS: { id: string; label: string; stage: Stage }[] = [
+  { id: 'clarifying', label: 'Clarifying assumptions', stage: 'analysing' },
+  { id: 'retrieving', label: 'Retrieving related Q3 data', stage: 'retrieving' },
+  { id: 'analysing', label: 'Analysing Q3 revenue trends and decisions', stage: 'citing' },
+  { id: 'drafting', label: 'Drafting an explanation of the dip', stage: 'drafting' },
+  { id: 'linking', label: 'Linking figures to source reports', stage: 'linking' },
+];
+
+const STAGE_ORDER: Stage[] = ['idle', 'analysing', 'retrieving', 'citing', 'drafting', 'linking', 'ready'];
+
+function stageIndex(stage: Stage): number {
+  return STAGE_ORDER.indexOf(stage);
+}
+
+function getStepStatus(stepStage: Stage, currentStage: Stage, stopped?: boolean): StepStatus {
+  if (currentStage === 'ready') return 'complete';
+  const current = stageIndex(currentStage);
+  const step = stageIndex(stepStage);
+  if (step < current) return 'complete';
+  if (step === current) return stopped ? 'stopped' : 'running';
+  return 'pending';
+}
 
 function StatusIcon({ status }: { status: StepStatus }) {
   if (status === 'complete') return <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-sage" />;
@@ -22,59 +42,19 @@ function StatusIcon({ status }: { status: StepStatus }) {
 
 /**
  * Collapsed by default. While the agent is working, the collapsed header shows
- * each step's short title in sequence (shimmering). Expandable for the full
- * "found …" detail lines.
+ * the active step label (shimmering). Expandable for the full trace.
  */
-export function ThoughtTrace({ answer, stage, revealedFindingIds, stopped }: ThoughtTraceProps) {
-  const steps = buildThoughtSteps(answer);
+export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
   const isReady = stage === 'ready';
   const [expanded, setExpanded] = useState(false);
 
-  const firstUnrevealedIndex = steps.findIndex((s) => !revealedFindingIds.includes(s.findingId));
-  const isRetrievalPhase = stage === 'retrieving' || stage === 'citing';
+  const rows = THINKING_STEPS.map((step) => ({
+    id: step.id,
+    text: step.label,
+    shortText: step.label,
+    status: getStepStatus(step.stage, stage, stopped),
+  }));
 
-  const stepRows = steps.map((step, i) => {
-    const revealed = revealedFindingIds.includes(step.findingId);
-    let status: StepStatus = revealed ? 'complete' : 'pending';
-    if (!revealed && i === firstUnrevealedIndex && isRetrievalPhase) {
-      status = stopped ? 'stopped' : 'running';
-    }
-    return {
-      id: step.id,
-      text: step.text,
-      shortText: step.shortText,
-      status,
-    };
-  });
-
-  const analysingStatus: StepStatus =
-    stage === 'analysing' ? (stopped ? 'stopped' : 'running') : 'complete';
-  const draftingStatus: StepStatus =
-    stage === 'ready'
-      ? 'complete'
-      : stage === 'drafting'
-        ? stopped
-          ? 'stopped'
-          : 'running'
-        : 'pending';
-
-  const rows = [
-    {
-      id: 'analysing',
-      text: 'Analysing your question',
-      shortText: 'Analysing your question',
-      status: analysingStatus,
-    },
-    ...stepRows,
-    {
-      id: 'drafting',
-      text: 'Drafting the answer',
-      shortText: 'Drafting the answer',
-      status: draftingStatus,
-    },
-  ];
-
-  const completeCount = stepRows.filter((r) => r.status === 'complete').length;
   const activeRow =
     rows.find((r) => r.status === 'running') ??
     [...rows].reverse().find((r) => r.status === 'complete') ??
@@ -107,7 +87,7 @@ export function ThoughtTrace({ answer, stage, revealedFindingIds, stopped }: Tho
       >
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-faint">
           <CheckCircle2 size={12} className="text-sage" />
-          Checked {completeCount} source{completeCount === 1 ? '' : 's'} · view trace
+          Finished thinking · view trace
         </span>
         <ChevronDown size={13} className="shrink-0 text-ink-faint" />
       </button>

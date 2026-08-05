@@ -121,7 +121,7 @@ export interface Answer {
   chart?: AnswerChart;
 }
 
-export type Stage = 'idle' | 'analysing' | 'retrieving' | 'citing' | 'drafting' | 'ready';
+export type Stage = 'idle' | 'analysing' | 'retrieving' | 'citing' | 'drafting' | 'linking' | 'ready';
 
 export interface DrillDown {
   id: string;

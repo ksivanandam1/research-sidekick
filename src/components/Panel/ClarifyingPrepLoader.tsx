@@ -7,7 +7,7 @@ export function ClarifyingPrepLoader() {
       <span className="inline-flex min-w-0 items-center gap-1.5">
         <Loader2 size={12} className="shrink-0 animate-spin text-ink-soft" />
         <span className="thought-shimmer-text truncate text-[11px] font-medium">
-          Checking a few assumptions first…
+          Clarifying assumptions
         </span>
       </span>
       <ChevronDown size={13} className="shrink-0 text-ink-faint" />

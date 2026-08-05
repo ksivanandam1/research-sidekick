@@ -129,12 +129,7 @@ export function ConversationTurnCard({
       {!rootDrillDown && !isClarifying && (
         <>
           {turn.answer && (
-            <ThoughtTrace
-              answer={turn.answer}
-              stage={turn.stage}
-              revealedFindingIds={turn.revealedFindingIds}
-              stopped={turn.stopped}
-            />
+            <ThoughtTrace stage={turn.stage} stopped={turn.stopped} />
           )}
 
           {turn.answer && (
