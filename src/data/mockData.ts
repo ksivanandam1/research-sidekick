@@ -409,7 +409,7 @@ export function buildRevenueClarifyingRound(): ClarifyingRound {
       },
       {
         id: 'outbound',
-        prompt: 'Any changes to the outbound team in Q3 — territories, quotas, headcount?',
+        prompt: 'Any changes to the outbound team in Q3 (e.g. territories, quotas, headcount)?',
         why: 'A mid-quarter reshuffle would produce exactly this pattern.',
         options: [
           { id: 'no', label: 'No changes' },
