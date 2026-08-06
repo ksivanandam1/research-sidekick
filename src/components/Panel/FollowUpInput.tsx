@@ -9,26 +9,32 @@ import { SuggestedQuestions } from './SuggestedQuestions';
 const NOTIFY_YES = 'Yes, please notify me';
 const NOTIFY_OTHER = "Something else, I don't know";
 
-export function FollowUpInput() {
+interface FollowUpInputProps {
+  /** Suggested / notify chips only when the transcript is scrolled to the bottom. */
+  showPrompts?: boolean;
+}
+
+export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
   const { attachedContext, pendingPrefill, consumePrefill, submitQuestion, turns } = useResearch();
   const [value, setValue] = useState('');
   const [notifyDismissedForTurn, setNotifyDismissedForTurn] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const showAttachSuggestions = turns.length === 0;
+  const showAttachSuggestions = showPrompts && turns.length === 0;
 
-  const notifyTurn = [...turns]
-    .reverse()
-    .find(
-      (t) =>
-        t.stage === 'ready' &&
-        !!t.answer &&
-        !t.archived &&
-        t.phase !== 'clarifying' &&
-        t.activePath.length === 0,
-    );
+  const firstAnswerTurn = turns.find(
+    (t) =>
+      t.stage === 'ready' &&
+      !!t.answer &&
+      !t.archived &&
+      t.phase !== 'clarifying' &&
+      t.activePath.length === 0,
+  );
   const showNotifyPrompts =
-    !!notifyTurn && notifyDismissedForTurn !== notifyTurn.id && !showAttachSuggestions;
+    showPrompts &&
+    !!firstAnswerTurn &&
+    turns.length === 1 &&
+    notifyDismissedForTurn !== firstAnswerTurn.id;
 
   useEffect(() => {
     if (pendingPrefill) {
@@ -46,8 +52,8 @@ export function FollowUpInput() {
   function handleSubmit(question?: string) {
     const text = question ?? value;
     if (!text.trim()) return;
-    if (notifyTurn && (text === NOTIFY_YES || text === NOTIFY_OTHER)) {
-      setNotifyDismissedForTurn(notifyTurn.id);
+    if (firstAnswerTurn && (text === NOTIFY_YES || text === NOTIFY_OTHER)) {
+      setNotifyDismissedForTurn(firstAnswerTurn.id);
     }
     submitQuestion(text);
     setValue('');
@@ -57,24 +63,24 @@ export function FollowUpInput() {
     <div className="bg-surface px-5 pb-3 pt-1">
       {/* <PinTriggerToggle /> */}
       {showAttachSuggestions && (
-        <div className="mb-2 flex justify-end">
+        <div key="attach-prompts" className="mb-2 overflow-hidden">
           <SuggestedQuestions onSelect={(q) => handleSubmit(q)} />
         </div>
       )}
 
       {showNotifyPrompts && (
-        <div className="mb-2 flex flex-col items-end gap-1.5">
+        <div key="notify-prompts" className="prompt-stack mb-2 flex flex-col items-end gap-1.5 overflow-hidden">
           <button
             type="button"
             onClick={() => handleSubmit(NOTIFY_YES)}
-            className="inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+            className="prompt-rise inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
           >
             {NOTIFY_YES}
           </button>
           <button
             type="button"
             onClick={() => handleSubmit(NOTIFY_OTHER)}
-            className="inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+            className="prompt-rise inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
           >
             {NOTIFY_OTHER}
           </button>

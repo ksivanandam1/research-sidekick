@@ -19,13 +19,13 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
   if (questions.length === 0) return null;
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
+    <div className="prompt-stack flex flex-col items-end gap-1.5">
       {questions.map((q) => (
         <button
           key={q}
           type="button"
           onClick={() => onSelect(q)}
-          className="inline-flex max-w-full items-center gap-1 rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+          className="prompt-rise inline-flex max-w-full items-center gap-1 rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
         >
           <Dna size={10} className="shrink-0" />
           <span className="truncate">{q}</span>

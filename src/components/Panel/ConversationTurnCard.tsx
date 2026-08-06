@@ -10,9 +10,9 @@ import { ClarifyingPrepLoader } from './ClarifyingPrepLoader';
 import { ComposerContextCard } from './ContextChip';
 import { PinnedInsight } from './PinnedInsight';
 
-function UserBubble({ text }: { text: string }) {
+function UserBubble({ text, turnId }: { text: string; turnId: string }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex justify-end" data-user-query={turnId}>
       <div
         className="max-w-[85%] bg-sage-soft px-3.5 py-2.5 text-sm font-medium text-ink"
         style={{ borderRadius: '16px 16px 0px 16px' }}
@@ -71,8 +71,10 @@ export function ConversationTurnCard({
   turn: ConversationTurn;
   isLatest: boolean;
 }) {
-  const { submitResponseFeedback, replyToAssumption, answerClarifying, pinTrigger } = useResearch();
+  const { submitResponseFeedback, replyToAssumption, answerClarifying, pinTrigger, turns } =
+    useResearch();
   const showMetricTags = turn.usedContextIds.length > 1;
+  const isFirstAgentResponse = turns.length === 1 && isLatest;
   const notifyTopic = (
     turn.usedContextIds[0] ? getKpi(turn.usedContextIds[0]).title : 'Revenue'
   ).toLowerCase();
@@ -84,8 +86,8 @@ export function ConversationTurnCard({
 
   if (collapseToPin && pinHeadline && turn.answer) {
     return (
-      <div className="flex flex-col gap-3 border-b border-border-soft pb-5 last:border-b-0 last:pb-0">
-        <UserBubble text={turn.question} />
+      <div className="flex flex-col gap-3">
+        <UserBubble text={turn.question} turnId={turn.id} />
         <TurnContextNote turn={turn} />
         <PinnedInsight
           key={`pin-b-${pinTrigger}-${turn.id}`}
@@ -98,8 +100,8 @@ export function ConversationTurnCard({
   }
 
   return (
-    <div className="flex flex-col gap-3 border-b border-border-soft pb-5 last:border-b-0 last:pb-0">
-      <UserBubble text={turn.question} />
+    <div className="flex flex-col gap-3">
+      <UserBubble text={turn.question} turnId={turn.id} />
 
       <TurnContextNote turn={turn} />
 
@@ -132,14 +134,21 @@ export function ConversationTurnCard({
             responseFeedback={turn.responseFeedback}
             archived={turn.archived}
             onReply={(finding) => replyToAssumption(turn.id, finding)}
-            notifyTopic={notifyTopic}
-            onResponseThumbsUp={() => submitResponseFeedback(turn.id, { value: 'up' })}
-            onResponseThumbsDown={(reasons, comment) =>
-              submitResponseFeedback(turn.id, {
-                value: 'down',
-                reasons,
-                comment: comment || undefined,
-              })
+            notifyTopic={isFirstAgentResponse ? notifyTopic : undefined}
+            onResponseThumbsUp={
+              isLatest
+                ? () => submitResponseFeedback(turn.id, { value: 'up' })
+                : undefined
+            }
+            onResponseThumbsDown={
+              isLatest
+                ? (reasons, comment) =>
+                    submitResponseFeedback(turn.id, {
+                      value: 'down',
+                      reasons,
+                      comment: comment || undefined,
+                    })
+                : undefined
             }
           />
         </>

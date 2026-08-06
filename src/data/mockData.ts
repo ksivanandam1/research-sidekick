@@ -513,7 +513,7 @@ export const REVENUE_DIP_ANSWER: Answer = {
       id: 'revenue-a2',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming the mild 3% YoY decline partly reflects seasonality in mid-market retail buying cycles.',
+      text: 'Seasonality could have impacted sales this month as MoM sales has decreased by 5%',
       confidence: 'medium',
       sourceIds: ['srcFinanceRevenue'],
     },
@@ -668,34 +668,17 @@ export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
   nextCheck: 'Re-check SMB churn again after October close.',
 };
 
-/** Applied to `revenue-a1` when the user clarifies the mix assumption. */
-export const REVISED_PRICING_FINDING: Partial<Finding> = {
-  kind: 'evidence',
-  text: 'Self-serve vs outbound mix inside Pro is stable QoQ — the outbound miss is not explained by a shift in deal composition.',
-  confidence: undefined,
-  sourceIds: ['srcFinancePricing', 'srcSfdcPipeline'],
-  revised: true,
-  revisedNote: 'Revised based on your feedback — upgraded from Assumption to Evidence.',
-};
-
 /**
  * Rewritten insights after the user clarifies an attached assumption in chat.
- * Demo path specializes `revenue-a1`; other findings get a generic upgrade.
+ * Demo uses fixed copy for the seasonality clarification path.
  */
-export function resolveClarificationAnswer(clarification: string, findingId: string): Answer {
-  const note = clarification.trim();
-  const revisedCore: Finding = {
-    id: findingId,
+export function resolveClarificationAnswer(_clarification: string, findingId: string): Answer {
+  const revisedSeasonality: Finding = {
+    id: findingId === 'revenue-a2' ? 'revenue-a2' : findingId,
     kind: 'evidence',
     metricId: 'revenue',
-    text:
-      findingId === 'revenue-a1'
-        ? (REVISED_PRICING_FINDING.text as string)
-        : `Updated from your clarification: ${note}`,
-    sourceIds:
-      findingId === 'revenue-a1'
-        ? (REVISED_PRICING_FINDING.sourceIds as string[])
-        : ['srcFinanceRevenue'],
+    text: 'Prior Q3s show only mild ~2% YoY decreases — Pro has held steady in Q3 for several years, so seasonality does not explain this gap.',
+    sourceIds: ['srcFinanceRevenue'],
     revised: true,
     revisedNote: 'Revised based on your feedback — upgraded from Assumption to Evidence.',
   };
@@ -703,44 +686,55 @@ export function resolveClarificationAnswer(clarification: string, findingId: str
   return {
     confidence: 'high',
     summary: [
-      `Thanks — I've rewritten the insights based on your clarification.`,
+      "Thanks for this clarification! I've rewritten the insights with the context that previous years have been consistent with only a mild 2% decreases YoY.",
       '---',
-      '## Updated read after your clarification',
-      findingId === 'revenue-a1'
-        ? `You clarified that **${note}**. With mix ruled in (or out) as you described, the Q3 miss still concentrates in **outbound-sourced Pro deals** — not a broad tier decline. Self-serve vs outbound mix inside Pro does not explain the hole on its own[1].`
-        : `You clarified: **${note}**. I've updated the prior assumption and refreshed the surrounding read accordingly.`,
-      '### What changed',
-      `1. Took your clarification as ground truth for the open assumption.\n2. Re-checked Pro volume vs mix against Finance and pipeline cuts.\n3. Rewrote the validation ask so the next step matches what you confirmed.`,
+      '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
+      'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
+      '### How I got here',
+      "1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].",
+      'We were able to diagnose the segment based on your tier and channel data.',
       '## Validation needed',
-      findingId === 'revenue-a1'
-        ? "Still worth confirming with **Maya Chen in RevOps** whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting** — your mix clarification narrows the question; it doesn't close it."
-        : 'Re-check the related evidence sources once the next data sync lands.',
+      "I was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them. **Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting** — that answer decides if this is a headcount problem or a conversion problem.",
     ].join('\n\n'),
     pinSummary:
-      'Insights rewritten from your clarification — prior response archived.',
+      'Seasonality ruled out — Q3 miss is outbound Pro, not a cyclical dip.',
     findings: [
       {
         id: 'clarified-e1',
         kind: 'evidence',
         metricId: 'revenue',
-        text: 'Q3 revenue was $2.1M versus a $2.4M forecast; the miss remains concentrated in outbound Pro.',
+        text: 'Q3 revenue was $2.1M versus a $2.4M forecast, a 12% miss that is only 3% below Q3 last year.',
         sourceIds: ['srcFinanceRevenue'],
       },
       {
         id: 'clarified-e2',
         kind: 'evidence',
         metricId: 'revenue',
-        text: 'Within Pro, outbound-sourced new deals nearly halved while self-serve upgrades held flat.',
+        text: 'Starter and Growth tiers are roughly flat while Pro tier revenue is down about 34% QoQ, where the dip lives.',
+        sourceIds: ['srcSfdcRenewals'],
+      },
+      {
+        id: 'clarified-e3',
+        kind: 'evidence',
+        metricId: 'revenue',
+        text: 'Within Pro, self-serve upgrades are flat while outbound-sourced new Pro deals nearly halved.',
         sourceIds: ['srcSlackRevOps', 'srcSfdcPipeline'],
       },
-      revisedCore,
+      {
+        id: 'clarified-e4',
+        kind: 'evidence',
+        metricId: 'revenue',
+        text: 'Pro closed-won count is down while median ACV and discount rate are stable, pointing to a volume problem not a value problem.',
+        sourceIds: ['srcFinancePricing'],
+      },
+      revisedSeasonality,
       {
         id: 'clarified-a1',
         kind: 'assumption',
         metricId: 'revenue',
-        text: 'Assuming the mild 3% YoY decline partly reflects seasonality in mid-market retail buying cycles.',
+        text: 'Assuming self-serve vs outbound mix inside Pro did not shift enough to explain the outbound miss on its own.',
         confidence: 'medium',
-        sourceIds: ['srcFinanceRevenue'],
+        sourceIds: [],
       },
     ],
   };

@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { MessageSquareText } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ChevronDown, MessageSquareText } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 import { PanelHeader } from './PanelHeader';
 import { ConversationTurnCard } from './ConversationTurnCard';
 import { FollowUpInput } from './FollowUpInput';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ActiveClarifyingCard } from './ClarifyingQuestions';
+
+const BOTTOM_THRESHOLD_PX = 48;
 
 function EmptyState() {
   return (
@@ -22,10 +24,22 @@ function EmptyState() {
   );
 }
 
+function offsetWithin(el: HTMLElement, ancestor: HTMLElement): number {
+  return (
+    el.getBoundingClientRect().top - ancestor.getBoundingClientRect().top + ancestor.scrollTop
+  );
+}
+
 export function ChatPanel() {
   const { turns, closePanel, startNewChat, answerClarifying } = useResearch();
   const [exportOpen, setExportOpen] = useState(false);
+  const [atBottom, setAtBottom] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const lastScrolledTurnId = useRef<string | null>(null);
+
   const lastReadyTurn = [...turns].reverse().find((t) => t.stage === 'ready') ?? null;
+  const latestTurnId = turns[turns.length - 1]?.id ?? null;
 
   const activeClarifyingTurn = [...turns]
     .reverse()
@@ -36,6 +50,50 @@ export function ChatPanel() {
       ? activeClarifying.questions[activeClarifying.currentIndex]
       : null;
 
+  const updateAtBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      setAtBottom(true);
+      return;
+    }
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setAtBottom(distance <= BOTTOM_THRESHOLD_PX);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, []);
+
+  const pinUserQueryToTop = useCallback(
+    (turnId: string, behavior: ScrollBehavior) => {
+      const root = scrollRef.current;
+      const spacer = spacerRef.current;
+      if (!root || !spacer) return;
+
+      const target = root.querySelector(`[data-user-query="${turnId}"]`);
+      if (!(target instanceof HTMLElement)) return;
+
+      // Enough room below the query for it to sit flush with the panel top.
+      spacer.style.height = `${Math.max(0, root.clientHeight - target.offsetHeight)}px`;
+      const top = Math.max(0, offsetWithin(target, root));
+      root.scrollTo({ top, behavior });
+      updateAtBottom();
+    },
+    [updateAtBottom],
+  );
+
+  useLayoutEffect(() => {
+    if (!latestTurnId || latestTurnId === lastScrolledTurnId.current) return;
+    lastScrolledTurnId.current = latestTurnId;
+    pinUserQueryToTop(latestTurnId, 'auto');
+  }, [latestTurnId, pinUserQueryToTop]);
+
+  useEffect(() => {
+    updateAtBottom();
+  }, [turns, updateAtBottom]);
+
   return (
     <div className="flex h-full flex-col">
       <PanelHeader
@@ -45,20 +103,27 @@ export function ChatPanel() {
         shareDisabled={!lastReadyTurn}
       />
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        {turns.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="flex flex-col gap-5">
-            {turns.map((turn, index) => (
-              <ConversationTurnCard
-                key={turn.id}
-                turn={turn}
-                isLatest={index === turns.length - 1}
-              />
-            ))}
-          </div>
-        )}
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={updateAtBottom}
+          className="h-full overflow-y-auto px-5 py-4"
+        >
+          {turns.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="flex flex-col gap-5">
+              {turns.map((turn, index) => (
+                <ConversationTurnCard
+                  key={turn.id}
+                  turn={turn}
+                  isLatest={index === turns.length - 1}
+                />
+              ))}
+              <div ref={spacerRef} aria-hidden className="shrink-0" />
+            </div>
+          )}
+        </div>
       </div>
 
       {activeClarifyingTurn && activeClarifying && activeQuestion && (
@@ -76,7 +141,25 @@ export function ChatPanel() {
         </div>
       )}
 
-      <FollowUpInput />
+      <div className="relative z-10">
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-full flex h-14 items-end justify-center bg-gradient-to-b from-transparent to-surface pb-2"
+          aria-hidden={atBottom}
+        >
+          {!atBottom && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              title="Scroll to bottom"
+              aria-label="Scroll to bottom"
+              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border border-border-soft bg-surface text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+            >
+              <ChevronDown size={16} strokeWidth={2.25} />
+            </button>
+          )}
+        </div>
+        <FollowUpInput showPrompts={atBottom} />
+      </div>
 
       {exportOpen && lastReadyTurn && (
         <ExportReviewModal turn={lastReadyTurn} onClose={() => setExportOpen(false)} />
