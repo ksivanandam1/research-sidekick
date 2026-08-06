@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, CircleDashed, OctagonX } from 'lucide-react';
 import type { Stage } from '../../types';
-import { DnaLoader } from './DnaLoader';
+import { MoonLoader } from './MoonLoader';
 
 interface ThoughtTraceProps {
   stage: Stage;
@@ -35,7 +35,7 @@ function getStepStatus(stepStage: Stage, currentStage: Stage, stopped?: boolean)
 
 function StatusIcon({ status }: { status: StepStatus }) {
   if (status === 'complete') return <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-sage" />;
-  if (status === 'running') return <DnaLoader size={13} className="mt-0.5" />;
+  if (status === 'running') return <MoonLoader size={13} className="mt-0.5" />;
   if (status === 'stopped') return <OctagonX size={13} className="mt-0.5 shrink-0 text-terracotta" />;
   return <CircleDashed size={13} className="mt-0.5 shrink-0 text-ink-faint" />;
 }
@@ -69,7 +69,7 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
           className="flex w-full items-center gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
         >
           <span className="inline-flex min-w-0 items-center gap-1.5">
-            <DnaLoader size={12} />
+            <MoonLoader size={12} />
             <span key={activeRow.id} className="thought-shimmer-text truncate text-[11px] font-medium">
               {activeRow.shortText}
             </span>
@@ -99,7 +99,7 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
       <button
         type="button"
         onClick={() => setExpanded(false)}
-        className="flex items-center justify-between gap-2 pb-1 text-left"
+        className="inline-flex items-center gap-1 pb-1 text-left"
       >
         <span className="text-[11px] font-medium text-ink-faint">
           {isReady ? 'Analysed Q3 revenue decline' : 'Thinking…'}

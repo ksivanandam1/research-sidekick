@@ -1,35 +1,42 @@
 import type { KpiDefinition, MetricId, SeriesPoint } from '../types';
 import { KPI_DEFINITIONS } from './mockData';
 
-export type TimeframePreset = 'thisMonth' | 'thisQuarter' | 'thisYear';
-/** Scope filter on the canvas — tiers by default, plus an all-products view. */
-export type ProductFilterId = 'allTiers' | 'starter' | 'growth' | 'pro' | 'allProducts';
-
-export interface TimeframeOption {
-  id: TimeframePreset;
-  label: string;
-}
+export type TimeframePreset = 'thisQuarter' | 'custom';
+/** Scope filter on the canvas — subscription tiers. */
+export type ProductFilterId = 'allTiers' | 'starter' | 'growth' | 'pro';
 
 export interface ProductOption {
   id: ProductFilterId;
   label: string;
 }
 
-export const TIMEFRAME_OPTIONS: TimeframeOption[] = [
-  { id: 'thisMonth', label: 'This month' },
-  { id: 'thisQuarter', label: 'This quarter' },
-  { id: 'thisYear', label: 'This year' },
-];
+export interface TimeframeSelection {
+  preset: TimeframePreset;
+  /** ISO date `YYYY-MM-DD` */
+  startDate: string;
+  /** ISO date `YYYY-MM-DD` */
+  endDate: string;
+}
+
+/** Demo "this quarter" window — Q3 2026. */
+export const THIS_QUARTER_RANGE = {
+  startDate: '2026-07-01',
+  endDate: '2026-09-30',
+} as const;
 
 export const PRODUCT_OPTIONS: ProductOption[] = [
   { id: 'allTiers', label: 'All tiers' },
   { id: 'starter', label: 'Starter' },
   { id: 'growth', label: 'Growth' },
   { id: 'pro', label: 'Pro' },
-  { id: 'allProducts', label: 'All products' },
 ];
 
-export const DEFAULT_TIMEFRAME: TimeframePreset = 'thisQuarter';
+export const DEFAULT_TIMEFRAME: TimeframeSelection = {
+  preset: 'thisQuarter',
+  startDate: THIS_QUARTER_RANGE.startDate,
+  endDate: THIS_QUARTER_RANGE.endDate,
+};
+
 export const DEFAULT_PRODUCT: ProductFilterId = 'allTiers';
 
 type KpiSlice = Pick<KpiDefinition, 'currentValue' | 'deltaPct' | 'series'>;
@@ -39,7 +46,7 @@ function series(values: number[], labels?: string[]): SeriesPoint[] {
   return values.map((value, i) => ({ label: months[i] ?? String(i + 1), value }));
 }
 
-/** Sparse overrides keyed by `${timeframe}:${scope}`. Missing keys fall back to baseline. */
+/** Sparse overrides keyed by `${profile}:${scope}`. Missing keys fall back to baseline. */
 const KPI_SLICES: Partial<Record<string, Partial<Record<MetricId, KpiSlice>>>> = {
   'thisMonth:allTiers': {
     revenue: { currentValue: 0.68, deltaPct: -2.1, series: series([0.72, 0.71, 0.7, 0.69, 0.68], ['W1', 'W2', 'W3', 'W4', 'W5']) },
@@ -76,10 +83,6 @@ const KPI_SLICES: Partial<Record<string, Partial<Record<MetricId, KpiSlice>>>> =
     grossMargin: { currentValue: 58.5, deltaPct: -2.2, series: series([60.5, 60.3, 60.0, 59.8, 59.5, 59.2, 59.0, 58.7, 58.5]) },
     newArr: { currentValue: 0.28, deltaPct: -42.0, series: series([0.5, 0.48, 0.47, 0.45, 0.42, 0.38, 0.34, 0.3, 0.28]) },
   },
-  'thisQuarter:allProducts': {
-    revenue: { currentValue: 2.1, deltaPct: -12.0, series: series([2.05, 2.1, 2.15, 2.2, 2.28, 2.35, 2.38, 2.25, 2.1]) },
-    activeCustomers: { currentValue: 2200, deltaPct: 2.3, series: series([2050, 2080, 2100, 2120, 2140, 2160, 2175, 2190, 2200]) },
-  },
   'thisMonth:starter': {
     revenue: { currentValue: 0.16, deltaPct: -1.0, series: series([0.17, 0.165, 0.162, 0.16, 0.16], ['W1', 'W2', 'W3', 'W4', 'W5']) },
   },
@@ -88,29 +91,145 @@ const KPI_SLICES: Partial<Record<string, Partial<Record<MetricId, KpiSlice>>>> =
   },
 };
 
-function sliceKey(timeframe: TimeframePreset, product: ProductFilterId): string {
-  return `${timeframe}:${product}`;
+type DataProfile = 'thisMonth' | 'thisQuarter' | 'thisYear';
+
+function daySpan(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T12:00:00`).getTime();
+  const end = new Date(`${endDate}T12:00:00`).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) return 90;
+  return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
 }
 
-export function resolveKpis(timeframe: TimeframePreset, product: ProductFilterId): KpiDefinition[] {
-  const primary = KPI_SLICES[sliceKey(timeframe, product)];
-  const fallbackProduct = KPI_SLICES[sliceKey(timeframe, 'allTiers')];
+/** Pick a data profile from the selected window length. */
+function dataProfile(selection: TimeframeSelection): DataProfile {
+  if (selection.preset === 'thisQuarter') return 'thisQuarter';
+  const days = daySpan(selection.startDate, selection.endDate);
+  if (days <= 45) return 'thisMonth';
+  if (days <= 120) return 'thisQuarter';
+  return 'thisYear';
+}
+
+function dateSeed(startDate: string, endDate: string): number {
+  let hash = 0;
+  const key = `${startDate}:${endDate}`;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function axisLabels(startDate: string, endDate: string, count: number): string[] {
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || count <= 0) {
+    return Array.from({ length: count }, (_, i) => String(i + 1));
+  }
+  const span = Math.max(1, end.getTime() - start.getTime());
+  const days = daySpan(startDate, endDate);
+  const withDay = days <= 120;
+  return Array.from({ length: count }, (_, i) => {
+    const t = start.getTime() + (span * i) / Math.max(1, count - 1);
+    const d = new Date(t);
+    return d.toLocaleDateString('en-US', withDay ? { month: 'short', day: 'numeric' } : { month: 'short' });
+  });
+}
+
+function roundValue(value: number, metricId: MetricId): number {
+  if (metricId === 'activeCustomers') return Math.round(value);
+  if (metricId === 'churn' || metricId === 'grossMargin') return +value.toFixed(1);
+  return +value.toFixed(2);
+}
+
+/**
+ * Shape a base slice for a custom range: retarget axis labels to the selected
+ * window and nudge values so different ranges are visibly distinct.
+ */
+function adaptSliceForCustomRange(
+  slice: KpiSlice,
+  selection: TimeframeSelection,
+  metricId: MetricId,
+): KpiSlice {
+  const seed = dateSeed(selection.startDate, selection.endDate);
+  const factor = 0.9 + ((seed + metricId.charCodeAt(0) * 13) % 21) / 100; // 0.90–1.10
+  const labels = axisLabels(selection.startDate, selection.endDate, slice.series.length);
+  const points = slice.series.map((point, i) => {
+    const wobble = 1 + ((((seed >> (i % 8)) + i * 7) % 9) - 4) * 0.008;
+    return {
+      label: labels[i] ?? point.label,
+      value: roundValue(point.value * factor * wobble, metricId),
+    };
+  });
+  const currentValue = points[points.length - 1]?.value ?? roundValue(slice.currentValue * factor, metricId);
+  const prior = points[points.length - 2]?.value;
+  const deltaPct =
+    prior != null && prior !== 0
+      ? +(((currentValue - prior) / Math.abs(prior)) * 100).toFixed(1)
+      : slice.deltaPct;
+
+  // Period totals (revenue / new ARR) scale with window length vs a ~90-day quarter.
+  const isPeriodTotal = metricId === 'revenue' || metricId === 'newArr';
+  const lengthScale = isPeriodTotal ? daySpan(selection.startDate, selection.endDate) / 90 : 1;
+  const scaledCurrent = isPeriodTotal
+    ? roundValue(slice.currentValue * factor * lengthScale, metricId)
+    : currentValue;
+
+  return {
+    currentValue: scaledCurrent,
+    deltaPct,
+    series: isPeriodTotal
+      ? points.map((p) => ({ ...p, value: roundValue(p.value * lengthScale, metricId) }))
+      : points,
+  };
+}
+
+function sliceKey(profile: DataProfile, product: ProductFilterId): string {
+  return `${profile}:${product}`;
+}
+
+function readSlice(
+  profile: DataProfile,
+  product: ProductFilterId,
+  metricId: MetricId,
+  fallback: KpiSlice,
+): KpiSlice {
+  const primary = KPI_SLICES[sliceKey(profile, product)];
+  const fallbackProduct = KPI_SLICES[sliceKey(profile, 'allTiers')];
   const baseline = KPI_SLICES['thisQuarter:allTiers'];
+  return primary?.[metricId] ?? fallbackProduct?.[metricId] ?? baseline?.[metricId] ?? fallback;
+}
+
+export function resolveKpis(selection: TimeframeSelection, product: ProductFilterId): KpiDefinition[] {
+  const profile = dataProfile(selection);
+  const rangeLabel = formatTimeframeLabel(selection);
 
   return KPI_DEFINITIONS.map((kpi) => {
+    const base = readSlice(profile, product, kpi.id, {
+      currentValue: kpi.currentValue,
+      deltaPct: kpi.deltaPct,
+      series: kpi.series,
+    });
     const override =
-      primary?.[kpi.id] ?? fallbackProduct?.[kpi.id] ?? baseline?.[kpi.id] ?? {
-        currentValue: kpi.currentValue,
-        deltaPct: kpi.deltaPct,
-        series: kpi.series,
-      };
+      selection.preset === 'custom' ? adaptSliceForCustomRange(base, selection, kpi.id) : base;
+
     return {
       ...kpi,
       currentValue: override.currentValue,
       deltaPct: override.deltaPct,
       series: override.series,
-      // Anomalies are out of scope for the base layer; strip for display slices.
+      scope: kpi.scope.replace(/·[^·]*$/, `· ${rangeLabel}`),
       anomaly: undefined,
     };
   });
 }
+
+function formatShortDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function formatTimeframeLabel(selection: TimeframeSelection): string {
+  if (selection.preset === 'thisQuarter') return 'This quarter';
+  return `${formatShortDate(selection.startDate)} – ${formatShortDate(selection.endDate)}`;
+}
+

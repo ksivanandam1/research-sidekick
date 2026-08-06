@@ -1,4 +1,4 @@
-import { Gauge } from 'lucide-react';
+import { Archive, Gauge } from 'lucide-react';
 import type { Confidence } from '../../types';
 
 const META: Record<
@@ -26,10 +26,22 @@ const META: Record<
 };
 
 interface ConfidenceBadgeProps {
-  level: Confidence;
+  level?: Confidence;
+  archived?: boolean;
 }
 
-export function ConfidenceBadge({ level }: ConfidenceBadgeProps) {
+export function ConfidenceBadge({ level, archived = false }: ConfidenceBadgeProps) {
+  if (archived) {
+    return (
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border-soft bg-surface-soft px-2.5 py-1 text-[11px] font-semibold text-ink-faint">
+        <Archive size={12} strokeWidth={2.25} />
+        Archived
+      </span>
+    );
+  }
+
+  if (!level) return null;
+
   const meta = META[level];
   return (
     <span

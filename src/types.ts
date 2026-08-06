@@ -14,11 +14,36 @@ export type ChartKind = 'sparkline' | 'donut' | 'barStrip' | 'steppedLine';
 export type ContextChartKind = ChartKind | 'compareBars';
 
 /** Chart attached to the composer, with subtitle frozen at attach time. */
-export interface AttachedContextItem {
+export interface ChartAttachedContextItem {
+  kind: 'chart';
+  /** Unique per attachment so the same chart can appear twice with different timeframes. */
+  instanceId: string;
   id: ContextId;
   title: string;
   timeframeLabel: string;
   chartKind: ContextChartKind;
+}
+
+/** Assumption finding attached so the user can clarify it in chat. */
+export interface AssumptionAttachedContextItem {
+  kind: 'assumption';
+  instanceId: string;
+  findingId: string;
+  sourceTurnId: string;
+  title: string;
+  /** Secondary line on the chip, e.g. "Assumption". */
+  subtitle: string;
+  text: string;
+}
+
+export type AttachedContextItem = ChartAttachedContextItem | AssumptionAttachedContextItem;
+
+export function isChartContext(item: AttachedContextItem): item is ChartAttachedContextItem {
+  return item.kind === 'chart';
+}
+
+export function isAssumptionContext(item: AttachedContextItem): item is AssumptionAttachedContextItem {
+  return item.kind === 'assumption';
 }
 
 export interface SeriesPoint {
@@ -47,14 +72,19 @@ export interface KpiDefinition {
   suggestedQuestions: string[];
 }
 
-export type SourceType = 'financeDW' | 'crm' | 'chat' | 'doc' | 'product';
+export type SourceType = 'xero' | 'tableau' | 'chat' | 'doc' | 'product';
 
 export interface Source {
   id: string;
   name: string;
   type: SourceType;
+  /** Relative or absolute freshness, e.g. "2d ago" or "Synced 6h ago". */
   timestamp: string;
-  snippet: string;
+  author?: string;
+  /** Workspace, folder, or channel shown in the citation meta row. */
+  workspace?: string;
+  /** Supporting excerpts. Citation cards hide these for Xero/Tableau (duplication with the claim). */
+  excerpts: string[];
   url?: string;
   restricted?: boolean;
 }
@@ -84,7 +114,6 @@ export interface Finding {
   text: string;
   confidence?: Confidence;
   sourceIds: string[];
-  investigateQuestion?: string;
   revised?: boolean;
   revisedNote?: string;
 }
@@ -174,6 +203,8 @@ export interface ConversationTurn {
   usedContextIds: MetricId[];
   stage: Stage;
   stopped?: boolean;
+  /** Prior answer superseded by a clarification reply. */
+  archived?: boolean;
   answer?: Answer;
   revealedFindingIds: string[];
   drillDowns: DrillDown[];
@@ -195,7 +226,7 @@ export interface ThoughtStep {
   findingId: string;
   /** Full line shown in the expanded trace. */
   text: string;
-  /** Short title for the collapsed thinking header (e.g. "Queried Salesforce"). */
+  /** Short title for the collapsed thinking header (e.g. "Queried Tableau"). */
   shortText: string;
 }
 

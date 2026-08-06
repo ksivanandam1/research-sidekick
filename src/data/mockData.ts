@@ -222,83 +222,98 @@ export function formatMetricValue(value: number, unit: KpiDefinition['unit']): s
 export const SOURCES: Record<string, Source> = {
   srcFinanceRevenue: {
     id: 'srcFinanceRevenue',
-    name: 'Finance DW — Subscription Revenue vs Plan (Q3 close)',
-    type: 'financeDW',
-    timestamp: 'Updated Aug 1, 2026',
-    snippet: 'Q3 revenue $2.1M vs $2.4M forecast (−12%). QoQ −12%; vs Q3 last year −3%.',
+    name: 'Subscription Revenue vs Plan (Q3 close)',
+    type: 'xero',
+    timestamp: '2d ago',
+    author: 'Finance Ops',
+    workspace: 'Finance',
+    excerpts: ['Q3 revenue $2.1M vs $2.4M forecast (−12%). QoQ −12%; vs Q3 last year −3%.'],
     url: '#',
   },
   srcSfdcRenewals: {
     id: 'srcSfdcRenewals',
-    name: 'Salesforce — Revenue by Tier (Starter / Growth / Pro)',
-    type: 'crm',
-    timestamp: 'Synced 6h ago',
-    snippet: 'Starter and Growth roughly flat QoQ. Pro tier revenue −34% QoQ.',
+    name: 'Revenue by Tier (Starter / Growth / Pro)',
+    type: 'tableau',
+    timestamp: '6h ago',
+    author: 'RevOps',
+    workspace: 'Sales Analytics',
+    excerpts: ['Starter and Growth roughly flat QoQ. Pro tier revenue −34% QoQ.'],
     url: '#',
   },
   srcSfdcPipeline: {
     id: 'srcSfdcPipeline',
-    name: 'Salesforce — Pro Pipeline by Channel',
-    type: 'crm',
-    timestamp: 'Synced 6h ago',
-    snippet: 'Pro self-serve upgrades flat. Outbound-sourced new Pro deals nearly halved QoQ.',
+    name: 'Pro Pipeline by Channel',
+    type: 'tableau',
+    timestamp: '6h ago',
+    author: 'RevOps',
+    workspace: 'Sales Analytics',
+    excerpts: [
+      'Pro self-serve upgrades flat. Outbound-sourced new Pro deals nearly halved QoQ.',
+    ],
     url: '#',
   },
   srcSlackRevOps: {
     id: 'srcSlackRevOps',
-    name: 'Slack — #revenue-ops (Jul 28)',
+    name: '#revenue-ops',
     type: 'chat',
-    timestamp: 'Jul 28, 2026',
-    snippet:
+    timestamp: 'Jul 28',
+    author: 'Maya Chen',
+    workspace: 'Revenue Ops',
+    excerpts: [
       '"Outbound coverage on larger retail chains is thin this quarter — fewer Pro first meetings converting."',
+      '"We\'re not losing on price — ACV looks fine. It\'s meeting volume and conversion."',
+      '"Self-serve Pro upgrades are holding; the miss is almost all outbound-sourced logos."',
+    ],
     url: '#',
-  },
-  srcLegalContract: {
-    id: 'srcLegalContract',
-    name: 'Legal — Outbound deal desk notes (restricted)',
-    type: 'doc',
-    timestamp: 'Jul 30, 2026',
-    snippet: '',
-    restricted: true,
   },
   srcFinancePricing: {
     id: 'srcFinancePricing',
-    name: 'Finance DW — Pro Deal Size & Discounting',
-    type: 'financeDW',
-    timestamp: 'Updated Jul 15, 2026',
-    snippet: 'Pro median ACV stable QoQ; discount rate unchanged. Closed-won count down sharply.',
+    name: 'Pro Deal Size & Discounting',
+    type: 'xero',
+    timestamp: '3d ago',
+    author: 'Finance Ops',
+    workspace: 'Finance',
+    excerpts: ['Pro median ACV stable QoQ; discount rate unchanged. Closed-won count down sharply.'],
     url: '#',
   },
   srcSfdcChurn: {
     id: 'srcSfdcChurn',
-    name: 'Salesforce — Churn Reasons Q3',
-    type: 'crm',
-    timestamp: 'Synced 6h ago',
-    snippet: "Top reason logged: 'pricing/budget' (44%), 'competitor' (22%), 'other' (34%).",
+    name: 'Churn Reasons Q3',
+    type: 'tableau',
+    timestamp: '6h ago',
+    author: 'Customer Success',
+    workspace: 'CS Analytics',
+    excerpts: ["Top reason logged: 'pricing/budget' (44%), 'competitor' (22%), 'other' (34%)."],
     url: '#',
   },
   srcFinanceMargin: {
     id: 'srcFinanceMargin',
-    name: 'Finance DW — Gross Margin Detail Q3',
-    type: 'financeDW',
-    timestamp: 'Updated Aug 1, 2026',
-    snippet: 'Gross margin 61.4% in Q3, down from 62.8% in Q2.',
+    name: 'Gross Margin Detail Q3',
+    type: 'xero',
+    timestamp: '2d ago',
+    author: 'Finance Ops',
+    workspace: 'Finance',
+    excerpts: ['Gross margin 61.4% in Q3, down from 62.8% in Q2.'],
     url: '#',
   },
   srcFinanceArr: {
     id: 'srcFinanceArr',
-    name: 'Finance DW — New ARR Bookings Q3',
-    type: 'financeDW',
-    timestamp: 'Updated Aug 1, 2026',
-    snippet: 'New ARR booked: $1.18M in Q3, down from $1.30M in Q2 — Pro outbound weighted.',
+    name: 'New ARR Bookings Q3',
+    type: 'xero',
+    timestamp: '2d ago',
+    author: 'Finance Ops',
+    workspace: 'Finance',
+    excerpts: ['New ARR booked: $1.18M in Q3, down from $1.30M in Q2 — Pro outbound weighted.'],
     url: '#',
   },
   srcProductUsage: {
     id: 'srcProductUsage',
-    name: 'Product Analytics — Active Subscribers Q3',
+    name: 'Active Subscribers Q3',
     type: 'product',
-    timestamp: 'Updated Jul 31, 2026',
-    snippet: '~2,200 active customers on Starter / Growth / Pro at end of Q3.',
+    timestamp: '5d ago',
+    author: 'Product Analytics',
+    workspace: 'Growth',
+    excerpts: ['~2,200 active customers on Starter / Growth / Pro at end of Q3.'],
     url: '#',
   },
 };
@@ -310,8 +325,8 @@ export function getSource(id: string): Source {
 }
 
 const QUERY_VERB: Record<SourceType, string> = {
-  financeDW: 'Queried the Finance data warehouse',
-  crm: 'Queried Salesforce',
+  xero: 'Queried Xero',
+  tableau: 'Queried Tableau',
   chat: 'Checked Slack',
   doc: 'Checked internal documents',
   product: 'Queried product analytics',
@@ -319,7 +334,7 @@ const QUERY_VERB: Record<SourceType, string> = {
 
 /**
  * Turns the evidence in an answer into a concrete "what did the agent check"
- * trace — e.g. "Queried Salesforce — found APAC renewal rate dropped to 81%" —
+ * trace — e.g. "Queried Tableau — found APAC renewal rate dropped to 81%" —
  * instead of an abstract stage label. Derived from the same scripted findings
  * used elsewhere, so it stays consistent with the citations shown in the answer.
  */
@@ -366,7 +381,28 @@ export function getAllSourcesForAnswer(answer: Answer): Source[] {
 // ---------------------------------------------------------------------------
 
 export function shouldStartClarifying(question: string): boolean {
+  if (isNotifyFollowUp(question)) return false;
   return /revenue|dip|miss|forecast|tier|channel|summarise|summarize|q3/i.test(question);
+}
+
+/** Short follow-ups from notify suggested prompts — skip the full diagnosis flow. */
+export function isNotifyFollowUp(question: string): boolean {
+  return /yes.*notify|please notify me|something else.*don'?t know/i.test(question.trim());
+}
+
+export function resolveNotifyFollowUp(question: string, topic = 'revenue'): Answer {
+  if (/yes.*notify|please notify me/i.test(question)) {
+    return {
+      confidence: 'high',
+      summary: `Got it — I'll watch **${topic}** and notify you when it moves meaningfully. You can review or turn this off anytime from **Manage alerts**.`,
+      findings: [],
+    };
+  }
+  return {
+    summary:
+      "No problem. Tell me what you'd like to look at next — another metric, a segment cut, or a different timeframe.",
+    findings: [],
+  };
 }
 
 export function buildRevenueClarifyingRound(): ClarifyingRound {
@@ -425,16 +461,14 @@ export const REVENUE_DIP_ANSWER: Answer = {
   confidence: 'medium',
   summary: [
     "Here's a rundown on the Q3 revenue dip. I've highlighted where further validation is needed as I'm not able to access certain datasets.",
+    '---',
     '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
-    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**[1]. Year on year it is only **down 3%**[1]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3]. Starter, Growth, and Pro self-serve have not dipped[2].',
+    'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
     '### How I got here',
-    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality[1].\n2. Broke revenue down by tier. Only Pro moved, down 34%[2].\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[3][4].',
+    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
     'We were able to diagnose the segment based on your tier and channel data.',
-    '### Validation needed',
-    [
-      '>>> CRM activity data for the outbound team',
-      "I have closed-won deals — the outcomes — but I don't have the pipeline activity behind them: calls made, meetings booked, opportunities created, stage-by-stage conversion, or sales cycle length for Q2 vs. Q3 to further analyse why Pro sales are below target.",
-    ].join('\n'),
+    '## Validation needed',
+    "I was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them. **Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting** — that answer decides if this is a headcount problem or a conversion problem.",
   ].join('\n\n'),
   pinSummary:
     'Q3 missed forecast by 12%, but the drop is outbound Pro — not a broad decline across tiers.',
@@ -458,7 +492,7 @@ export const REVENUE_DIP_ANSWER: Answer = {
       kind: 'evidence',
       metricId: 'revenue',
       text: 'Within Pro, self-serve upgrades are flat while outbound-sourced new Pro deals nearly halved.',
-      sourceIds: ['srcSfdcPipeline', 'srcSlackRevOps', 'srcLegalContract'],
+      sourceIds: ['srcSlackRevOps', 'srcSfdcPipeline'],
     },
     {
       id: 'revenue-e4',
@@ -471,7 +505,7 @@ export const REVENUE_DIP_ANSWER: Answer = {
       id: 'revenue-a1',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming Products A/B/C mix inside Pro did not shift enough to explain the outbound miss on its own.',
+      text: 'Assuming self-serve vs outbound mix inside Pro did not shift enough to explain the outbound miss on its own.',
       confidence: 'medium',
       sourceIds: [],
     },
@@ -479,25 +513,9 @@ export const REVENUE_DIP_ANSWER: Answer = {
       id: 'revenue-a2',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming the mild −3% YoY decline partly reflects seasonality in mid-market retail buying cycles.',
+      text: 'Assuming the mild 3% YoY decline partly reflects seasonality in mid-market retail buying cycles.',
       confidence: 'medium',
       sourceIds: ['srcFinanceRevenue'],
-    },
-    {
-      id: 'revenue-u1',
-      kind: 'unknown',
-      metricId: 'revenue',
-      text: 'Is outbound capacity (reps, meetings, coverage) down, or is conversion from first meeting to close weaker?',
-      sourceIds: [],
-      investigateQuestion: 'Is the Pro outbound miss a capacity problem or a conversion problem?',
-    },
-    {
-      id: 'revenue-u2',
-      kind: 'unknown',
-      metricId: 'revenue',
-      text: 'Whether larger retail chains lengthened procurement cycles this quarter versus last year.',
-      sourceIds: [],
-      investigateQuestion: 'Did larger retail chains lengthen Pro procurement cycles in Q3?',
     },
   ],
 };
@@ -529,14 +547,6 @@ export const CHURN_SOLO_ANSWER: Answer = {
       text: 'Assuming logged churn reasons reflect the true cause, not just the stated one.',
       confidence: 'medium',
       sourceIds: [],
-    },
-    {
-      id: 'churn-u1',
-      kind: 'unknown',
-      metricId: 'churn',
-      text: 'Whether SMB churn is following the same pattern as Enterprise.',
-      sourceIds: [],
-      investigateQuestion: 'Is SMB churn following the same pattern?',
     },
   ],
   nextCheck: 'Break down churn by segment (Enterprise vs SMB) for Q3.',
@@ -572,14 +582,6 @@ export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
       confidence: 'medium',
       sourceIds: [],
     },
-    {
-      id: 'combined-u1',
-      kind: 'unknown',
-      metricId: 'churn',
-      text: 'Whether churn is elevated inside Pro specifically, or concentrated in Starter/Growth.',
-      sourceIds: [],
-      investigateQuestion: 'Is Q3 churn concentrated in the Pro tier?',
-    },
   ],
   nextCheck: 'Split churn by tier (Starter / Growth / Pro) before treating retention as part of the revenue miss.',
 };
@@ -614,14 +616,6 @@ export const PRO_OUTBOUND_DRILLDOWN_ANSWER: Answer = {
       confidence: 'medium',
       sourceIds: [],
     },
-    {
-      id: 'drill-pro-u1',
-      kind: 'unknown',
-      metricId: 'revenue',
-      text: 'Is outbound capacity (reps, meetings, coverage) down, or is conversion from first meeting to close weaker?',
-      sourceIds: [],
-      investigateQuestion: 'Is the Pro outbound miss a capacity problem or a conversion problem?',
-    },
   ],
   nextCheck: 'Compare outbound meeting volume and stage conversion for Pro this quarter vs last.',
 };
@@ -647,13 +641,6 @@ export const PRO_VOLUME_DRILLDOWN_ANSWER: Answer = {
       confidence: 'high',
       sourceIds: ['srcFinancePricing'],
     },
-    {
-      id: 'drill-vol-u1',
-      kind: 'unknown',
-      metricId: 'revenue',
-      text: 'Whether late-stage losses increased, or the top of funnel simply produced fewer Pro opportunities.',
-      sourceIds: [],
-    },
   ],
   nextCheck: 'Pull Pro stage conversion from SQL → closed-won for Q2 vs Q3 to see where volume leaks.',
 };
@@ -677,26 +664,87 @@ export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
       confidence: 'low',
       sourceIds: [],
     },
-    {
-      id: 'drill-smb-u1',
-      kind: 'unknown',
-      metricId: 'churn',
-      text: 'Whether SMB churn typically lags Enterprise churn by a quarter.',
-      sourceIds: [],
-    },
   ],
   nextCheck: 'Re-check SMB churn again after October close.',
 };
 
-/** Applied to `revenue-a1` when the user flags it as not holding. */
+/** Applied to `revenue-a1` when the user clarifies the mix assumption. */
 export const REVISED_PRICING_FINDING: Partial<Finding> = {
   kind: 'evidence',
-  text: 'Product mix inside Pro is stable QoQ — the outbound miss is not explained by a shift away from higher-ACV products.',
+  text: 'Self-serve vs outbound mix inside Pro is stable QoQ — the outbound miss is not explained by a shift in deal composition.',
   confidence: undefined,
   sourceIds: ['srcFinancePricing', 'srcSfdcPipeline'],
   revised: true,
   revisedNote: 'Revised based on your feedback — upgraded from Assumption to Evidence.',
 };
+
+/**
+ * Rewritten insights after the user clarifies an attached assumption in chat.
+ * Demo path specializes `revenue-a1`; other findings get a generic upgrade.
+ */
+export function resolveClarificationAnswer(clarification: string, findingId: string): Answer {
+  const note = clarification.trim();
+  const revisedCore: Finding = {
+    id: findingId,
+    kind: 'evidence',
+    metricId: 'revenue',
+    text:
+      findingId === 'revenue-a1'
+        ? (REVISED_PRICING_FINDING.text as string)
+        : `Updated from your clarification: ${note}`,
+    sourceIds:
+      findingId === 'revenue-a1'
+        ? (REVISED_PRICING_FINDING.sourceIds as string[])
+        : ['srcFinanceRevenue'],
+    revised: true,
+    revisedNote: 'Revised based on your feedback — upgraded from Assumption to Evidence.',
+  };
+
+  return {
+    confidence: 'high',
+    summary: [
+      `Thanks — I've rewritten the insights based on your clarification.`,
+      '---',
+      '## Updated read after your clarification',
+      findingId === 'revenue-a1'
+        ? `You clarified that **${note}**. With mix ruled in (or out) as you described, the Q3 miss still concentrates in **outbound-sourced Pro deals** — not a broad tier decline. Self-serve vs outbound mix inside Pro does not explain the hole on its own[1].`
+        : `You clarified: **${note}**. I've updated the prior assumption and refreshed the surrounding read accordingly.`,
+      '### What changed',
+      `1. Took your clarification as ground truth for the open assumption.\n2. Re-checked Pro volume vs mix against Finance and pipeline cuts.\n3. Rewrote the validation ask so the next step matches what you confirmed.`,
+      '## Validation needed',
+      findingId === 'revenue-a1'
+        ? "Still worth confirming with **Maya Chen in RevOps** whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting** — your mix clarification narrows the question; it doesn't close it."
+        : 'Re-check the related evidence sources once the next data sync lands.',
+    ].join('\n\n'),
+    pinSummary:
+      'Insights rewritten from your clarification — prior response archived.',
+    findings: [
+      {
+        id: 'clarified-e1',
+        kind: 'evidence',
+        metricId: 'revenue',
+        text: 'Q3 revenue was $2.1M versus a $2.4M forecast; the miss remains concentrated in outbound Pro.',
+        sourceIds: ['srcFinanceRevenue'],
+      },
+      {
+        id: 'clarified-e2',
+        kind: 'evidence',
+        metricId: 'revenue',
+        text: 'Within Pro, outbound-sourced new deals nearly halved while self-serve upgrades held flat.',
+        sourceIds: ['srcSlackRevOps', 'srcSfdcPipeline'],
+      },
+      revisedCore,
+      {
+        id: 'clarified-a1',
+        kind: 'assumption',
+        metricId: 'revenue',
+        text: 'Assuming the mild 3% YoY decline partly reflects seasonality in mid-market retail buying cycles.',
+        confidence: 'medium',
+        sourceIds: ['srcFinanceRevenue'],
+      },
+    ],
+  };
+}
 
 const GENERIC_SOURCE_BY_METRIC: Record<MetricId, string> = {
   revenue: 'srcFinanceRevenue',
@@ -733,14 +781,6 @@ export function genericAnswerFor(kpi: KpiDefinition): Answer {
         confidence: 'medium',
         sourceIds: [],
       },
-      {
-        id: `${kpi.id}-generic-u1`,
-        kind: 'unknown',
-        metricId: kpi.id,
-        text: `What's driving the ${direction === 'up' ? 'increase' : 'decrease'} at a segment level.`,
-        sourceIds: [],
-        investigateQuestion: `What's driving the change in ${kpi.title}?`,
-      },
     ],
     nextCheck: `Pull a segment-level breakdown of ${kpi.title} for Q3.`,
   };
@@ -775,13 +815,6 @@ export function genericDrillDownAnswer(question: string, metricId: MetricId): An
         confidence: 'low',
         sourceIds: [],
       },
-      {
-        id: `${kpi.id}-drill-generic-u1`,
-        kind: 'unknown',
-        metricId,
-        text: `Which specific region or segment is driving this.`,
-        sourceIds: [],
-      },
     ],
     nextCheck: `Re-run this with a regional breakdown for ${kpi.title}.`,
   };
@@ -806,7 +839,7 @@ const METRIC_KEYWORDS: Record<MetricId, RegExp> = {
  * everything attached is treated as in scope.
  */
 export function determineUsedContext(question: string, contextIds: ContextId[]): MetricId[] {
-  const metricIds = contextIds.filter(isMetricId);
+  const metricIds = [...new Set(contextIds.filter(isMetricId))];
   if (metricIds.length <= 1) return metricIds;
   const mentioned = metricIds.filter((id) => METRIC_KEYWORDS[id].test(question));
   if (mentioned.length > 0 && mentioned.length < metricIds.length) return mentioned;

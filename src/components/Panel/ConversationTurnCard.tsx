@@ -1,4 +1,3 @@
-import { CornerDownRight } from 'lucide-react';
 import type { ConversationTurn } from '../../types';
 import { isMetricId } from '../../types';
 import { getKpi } from '../../data/mockData';
@@ -8,13 +7,8 @@ import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
 import { ClarifyingQuestions } from './ClarifyingQuestions';
 import { ClarifyingPrepLoader } from './ClarifyingPrepLoader';
-import { DrillDownThread } from './DrillDownThread';
 import { ComposerContextCard } from './ContextChip';
 import { PinnedInsight } from './PinnedInsight';
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-}
 
 function UserBubble({ text }: { text: string }) {
   return (
@@ -40,15 +34,24 @@ function TurnContextNote({ turn }: { turn: ConversationTurn }) {
   return (
     <div className="flex flex-col items-end gap-1.5">
       <div className="flex max-w-full flex-wrap justify-end gap-2">
-        {items.map((item) => (
-          <ComposerContextCard
-            key={item.id}
-            title={item.title}
-            timeframeLabel={item.timeframeLabel}
-            chartKind={item.chartKind}
-            dimmed={isMetricId(item.id) && unusedMetrics.includes(item.id)}
-          />
-        ))}
+        {items.map((item) =>
+          item.kind === 'assumption' ? (
+            <ComposerContextCard
+              key={item.instanceId}
+              title={item.title}
+              timeframeLabel={item.subtitle}
+              variant="assumption"
+            />
+          ) : (
+            <ComposerContextCard
+              key={item.instanceId}
+              title={item.title}
+              timeframeLabel={item.timeframeLabel}
+              chartKind={item.chartKind}
+              dimmed={isMetricId(item.id) && unusedMetrics.includes(item.id)}
+            />
+          ),
+        )}
       </div>
       {unusedMetrics.length > 0 && turn.usedContextIds.length > 0 && (
         <p className="max-w-[85%] text-right text-[11px] leading-relaxed text-ink-faint">
@@ -68,23 +71,15 @@ export function ConversationTurnCard({
   turn: ConversationTurn;
   isLatest: boolean;
 }) {
-  const {
-    submitResponseFeedback,
-    startDrillDown,
-    reopenPath,
-    saveRepeatable,
-    answerClarifying,
-    pinTrigger,
-  } = useResearch();
+  const { submitResponseFeedback, replyToAssumption, answerClarifying, pinTrigger } = useResearch();
   const showMetricTags = turn.usedContextIds.length > 1;
-  const rootDrillDown =
-    turn.activePath.length > 0
-      ? turn.drillDowns.find((d) => d.id === turn.activePath[0])
-      : undefined;
+  const notifyTopic = (
+    turn.usedContextIds[0] ? getKpi(turn.usedContextIds[0]).title : 'Revenue'
+  ).toLowerCase();
   const clarifying = turn.clarifying;
   const isClarifying = turn.phase === 'clarifying' && !!clarifying;
   const clarifyingLoading = isClarifying && turn.stage !== 'ready';
-  const collapseToPin = pinTrigger === 'newTurn' && !isLatest && !!turn.answer;
+  const collapseToPin = pinTrigger === 'newTurn' && !isLatest && !!turn.answer && !turn.archived;
   const pinHeadline = turn.answer ? getAnswerHeadline(turn.answer) : null;
 
   if (collapseToPin && pinHeadline && turn.answer) {
@@ -126,62 +121,28 @@ export function ConversationTurnCard({
         />
       )}
 
-      {!rootDrillDown && !isClarifying && (
+      {!isClarifying && turn.answer && (
         <>
-          {turn.answer && (
-            <ThoughtTrace stage={turn.stage} stopped={turn.stopped} />
-          )}
-
-          {turn.answer && (
-            <AnswerSection
-              answer={turn.answer}
-              stage={turn.stage}
-              revealedFindingIds={turn.revealedFindingIds}
-              showMetricTags={showMetricTags}
-              responseFeedback={turn.responseFeedback}
-              onInvestigate={(finding) => startDrillDown(turn.id, finding)}
-              onSaveRepeatable={() => saveRepeatable(turn.question, turn.usedContextIds)}
-              onResponseThumbsUp={() =>
-                submitResponseFeedback(turn.id, { value: 'up' })
-              }
-              onResponseThumbsDown={(reasons, comment) =>
-                submitResponseFeedback(turn.id, {
-                  value: 'down',
-                  reasons,
-                  comment: comment || undefined,
-                })
-              }
-            />
-          )}
-
-          {turn.drillDowns.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {turn.drillDowns.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => reopenPath(turn.id, [d.id])}
-                  className="inline-flex items-center gap-1 rounded-full border border-border-soft px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
-                >
-                  <CornerDownRight size={11} />
-                  {truncate(d.question, 42)}
-                </button>
-              ))}
-            </div>
-          )}
+          <ThoughtTrace stage={turn.stage} stopped={turn.stopped} />
+          <AnswerSection
+            answer={turn.answer}
+            stage={turn.stage}
+            revealedFindingIds={turn.revealedFindingIds}
+            showMetricTags={showMetricTags}
+            responseFeedback={turn.responseFeedback}
+            archived={turn.archived}
+            onReply={(finding) => replyToAssumption(turn.id, finding)}
+            notifyTopic={notifyTopic}
+            onResponseThumbsUp={() => submitResponseFeedback(turn.id, { value: 'up' })}
+            onResponseThumbsDown={(reasons, comment) =>
+              submitResponseFeedback(turn.id, {
+                value: 'down',
+                reasons,
+                comment: comment || undefined,
+              })
+            }
+          />
         </>
-      )}
-
-      {rootDrillDown && (
-        <DrillDownThread
-          turnId={turn.id}
-          node={rootDrillDown}
-          path={[rootDrillDown.id]}
-          activePath={turn.activePath}
-          trail={[turn.question]}
-          parentAnswer={turn.answer}
-          showMetricTags={showMetricTags}
-        />
       )}
     </div>
   );

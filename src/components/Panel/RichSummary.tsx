@@ -29,6 +29,10 @@ function renderBlock(block: string, key: number, citations: Finding[]) {
   const trimmed = block.trim();
   if (!trimmed) return null;
 
+  if (trimmed === '---') {
+    return <hr key={key} className="border-0 border-t border-border-soft" />;
+  }
+
   if (trimmed.startsWith('## ')) {
     return (
       <h2 key={key} className="text-lg font-semibold leading-snug text-ink">

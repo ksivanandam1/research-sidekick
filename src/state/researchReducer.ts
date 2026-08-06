@@ -2,7 +2,6 @@ import type {
   Answer,
   AttachedContextItem,
   ClarifyingResponse,
-  ContextId,
   ConversationTurn,
   DrillDown,
   PinTrigger,
@@ -33,7 +32,7 @@ export const initialSessionState: SessionState = {
 
 export type SessionAction =
   | { type: 'ADD_CONTEXT'; item: AttachedContextItem }
-  | { type: 'REMOVE_CONTEXT'; id: ContextId }
+  | { type: 'REMOVE_CONTEXT'; instanceId: string }
   | { type: 'SET_PANEL_OPEN'; open: boolean }
   | { type: 'CREATE_TURN'; turn: ConversationTurn }
   | { type: 'SET_TURN_STAGE'; turnId: string; stage: Stage }
@@ -56,7 +55,8 @@ export type SessionAction =
   | { type: 'RECORD_CLARIFYING_RESPONSE'; turnId: string; response: ClarifyingResponse }
   | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer }
   | { type: 'CLEAR_CONVERSATION' }
-  | { type: 'SET_PIN_TRIGGER'; pinTrigger: PinTrigger };
+  | { type: 'SET_PIN_TRIGGER'; pinTrigger: PinTrigger }
+  | { type: 'ARCHIVE_TURN'; turnId: string };
 
 /** Recursively locates the node at `path` within a drill-down tree and applies `updater`. */
 function updateNodeAtPath(nodes: DrillDown[], path: string[], updater: (node: DrillDown) => DrillDown): DrillDown[] {
@@ -91,13 +91,25 @@ let toastCounter = 0;
 export function researchReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
     case 'ADD_CONTEXT': {
-      if (state.attachedContext.some((item) => item.id === action.item.id)) return state;
-      return { ...state, attachedContext: [...state.attachedContext, action.item] };
+      const incoming = action.item;
+      const exists =
+        incoming.kind === 'assumption'
+          ? state.attachedContext.some(
+              (item) => item.kind === 'assumption' && item.findingId === incoming.findingId,
+            )
+          : state.attachedContext.some(
+              (item) =>
+                item.kind === 'chart' &&
+                item.id === incoming.id &&
+                item.timeframeLabel === incoming.timeframeLabel,
+            );
+      if (exists) return state;
+      return { ...state, attachedContext: [...state.attachedContext, incoming] };
     }
     case 'REMOVE_CONTEXT': {
       return {
         ...state,
-        attachedContext: state.attachedContext.filter((item) => item.id !== action.id),
+        attachedContext: state.attachedContext.filter((item) => item.instanceId !== action.instanceId),
       };
     }
     case 'SET_PANEL_OPEN': {
@@ -204,6 +216,9 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
     }
     case 'SET_PIN_TRIGGER': {
       return { ...state, pinTrigger: action.pinTrigger };
+    }
+    case 'ARCHIVE_TURN': {
+      return updateTurn(state, action.turnId, (t) => ({ ...t, archived: true }));
     }
     default:
       return state;

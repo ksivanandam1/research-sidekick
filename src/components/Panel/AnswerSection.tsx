@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bookmark, ChevronDown, ChevronUp, Compass } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Answer, Finding, ResponseFeedback, ResponseFeedbackReason, Stage } from '../../types';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { ConfidenceBadge } from './ConfidenceBadge';
@@ -14,8 +14,10 @@ interface AnswerSectionProps {
   revealedFindingIds: string[];
   showMetricTags: boolean;
   responseFeedback?: ResponseFeedback;
-  onInvestigate: (finding: Finding) => void;
-  onSaveRepeatable?: () => void;
+  archived?: boolean;
+  onReply?: (finding: Finding) => void;
+  /** Topic for the change-notification question in the agent response. */
+  notifyTopic?: string;
   onResponseThumbsUp?: () => void;
   onResponseThumbsDown?: (reasons: ResponseFeedbackReason[], comment: string) => void;
 }
@@ -24,17 +26,12 @@ function SkeletonLine({ width }: { width: string }) {
   return <div className="h-2.5 animate-pulse rounded-full bg-border-soft" style={{ width }} />;
 }
 
-const GROUPS: { kind: Finding['kind']; heading: string; defaultExpanded: boolean }[] = [
-  { kind: 'assumption', heading: 'Assumptions', defaultExpanded: false },
-  { kind: 'unknown', heading: 'Open Questions', defaultExpanded: false },
-];
-
 interface FindingGroupProps {
   heading: string;
   findings: Finding[];
   defaultExpanded: boolean;
   showMetricTags: boolean;
-  onInvestigate: (finding: Finding) => void;
+  onReply?: (finding: Finding) => void;
 }
 
 function FindingGroup({
@@ -42,7 +39,7 @@ function FindingGroup({
   findings,
   defaultExpanded,
   showMetricTags,
-  onInvestigate,
+  onReply,
 }: FindingGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -69,7 +66,7 @@ function FindingGroup({
               key={finding.id}
               finding={finding}
               showMetricTag={showMetricTags}
-              onInvestigate={finding.investigateQuestion ? () => onInvestigate(finding) : undefined}
+              onReply={onReply ? () => onReply(finding) : undefined}
             />
           ))}
         </div>
@@ -84,8 +81,9 @@ export function AnswerSection({
   revealedFindingIds,
   showMetricTags,
   responseFeedback,
-  onInvestigate,
-  onSaveRepeatable,
+  archived = false,
+  onReply,
+  notifyTopic,
   onResponseThumbsUp,
   onResponseThumbsDown,
 }: AnswerSectionProps) {
@@ -94,11 +92,16 @@ export function AnswerSection({
   const summaryVisible = stage === 'drafting' || stage === 'linking' || stage === 'ready';
   const isReady = stage === 'ready';
   const citations = answer.findings.filter((f) => f.kind === 'evidence');
+  const assumptions = answer.findings.filter(
+    (f) => f.kind === 'assumption' && revealedFindingIds.includes(f.id),
+  );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${archived ? 'opacity-70' : ''}`}>
       <div className="flex flex-col gap-3">
-        {summaryVisible && answer.confidence && <ConfidenceBadge level={answer.confidence} />}
+        {summaryVisible && (archived || answer.confidence) && (
+          <ConfidenceBadge level={answer.confidence} archived={archived} />
+        )}
         {summaryVisible ? (
           <RichSummary text={summaryText} citations={citations} />
         ) : (
@@ -112,43 +115,23 @@ export function AnswerSection({
 
       {summaryVisible && answer.chart && <AnswerInsightChart chart={answer.chart} />}
 
-      {GROUPS.map(({ kind, heading, defaultExpanded }) => {
-        const findings = answer.findings.filter((f) => f.kind === kind && revealedFindingIds.includes(f.id));
-        if (findings.length === 0) return null;
-        return (
-          <FindingGroup
-            key={kind}
-            heading={heading}
-            findings={findings}
-            defaultExpanded={defaultExpanded}
-            showMetricTags={showMetricTags}
-            onInvestigate={onInvestigate}
-          />
-        );
-      })}
-
-      {isReady && answer.nextCheck && (
-        <div className="flex items-start gap-2 rounded-xl border border-ocean-soft bg-ocean-soft/60 p-3">
-          <Compass size={14} className="mt-0.5 shrink-0 text-ocean" />
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ocean">Suggested next check</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{answer.nextCheck}</p>
-          </div>
-        </div>
+      {assumptions.length > 0 && (
+        <FindingGroup
+          heading="Assumptions"
+          findings={assumptions}
+          defaultExpanded={false}
+          showMetricTags={showMetricTags}
+          onReply={archived ? undefined : onReply}
+        />
       )}
 
-      {isReady && onSaveRepeatable && (
-        <button
-          type="button"
-          onClick={onSaveRepeatable}
-          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border-soft px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
-        >
-          <Bookmark size={12} />
-          Save as a repeatable check
-        </button>
+      {isReady && notifyTopic && !archived && (
+        <p className="text-sm leading-relaxed text-ink">
+          Would you like me to notify you on future changes to {notifyTopic}?
+        </p>
       )}
 
-      {isReady && onResponseThumbsUp && onResponseThumbsDown && (
+      {isReady && !archived && onResponseThumbsUp && onResponseThumbsDown && (
         <ResponseFeedbackControls
           feedback={responseFeedback}
           onThumbsUp={onResponseThumbsUp}

@@ -21,7 +21,6 @@ export function buildExportDraft(turn: ConversationTurn): string {
 
   section('Evidence', 'evidence');
   section('Assumptions', 'assumption');
-  section('Open questions', 'unknown');
 
   if (turn.answer.nextCheck) {
     lines.push(`Suggested next check: ${turn.answer.nextCheck}`);

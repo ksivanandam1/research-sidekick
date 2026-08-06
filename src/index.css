@@ -100,36 +100,42 @@ body {
   animation: thought-shimmer 1.6s linear infinite;
 }
 
-/* Horizontal DNA loader — two strands + pulsing rungs */
-@keyframes dna-strand-wave {
+/* Kimi-style moon-phase spinner */
+@keyframes moon-frame {
   0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
+  12.49% {
     opacity: 1;
   }
-}
-
-@keyframes dna-rung-pulse {
-  0%,
+  12.5%,
   100% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.95;
+    opacity: 0;
   }
 }
 
-.dna-loader-strand {
-  animation: dna-strand-wave 1.15s ease-in-out infinite;
+.moon-loader {
+  position: relative;
+  display: inline-block;
+  user-select: none;
 }
 
-.dna-loader-strand-b {
-  animation-delay: 0.575s;
+.moon-loader-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: moon-frame 960ms steps(1, end) infinite;
 }
 
-.dna-loader-rung {
-  animation: dna-rung-pulse 1.15s ease-in-out infinite;
+@media (prefers-reduced-motion: reduce) {
+  .moon-loader-frame {
+    animation: none;
+    opacity: 0;
+  }
+
+  .moon-loader-frame:nth-child(4) {
+    opacity: 1;
+  }
 }
 

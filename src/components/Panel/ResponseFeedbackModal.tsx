@@ -48,7 +48,7 @@ export function ResponseFeedbackModal({ onClose, onSubmit }: ResponseFeedbackMod
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-ink">What went wrong?</p>
-              <p className="text-[11px] text-ink-faint">Select all that apply — your feedback helps us improve.</p>
+              <p className="text-[11px] text-ink-faint">Select all that apply. Your feedback helps us improve.</p>
             </div>
             <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-ink-soft hover:bg-surface-soft">
               <X size={16} />

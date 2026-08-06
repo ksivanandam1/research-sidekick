@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, RefreshCcw } from 'lucide-react';
+import { MessageSquareReply, RefreshCcw } from 'lucide-react';
 import type { Finding } from '../../types';
 import { getKpi, getSource } from '../../data/mockData';
 import { CitationChip } from './CitationChip';
@@ -8,10 +8,10 @@ import { SourcePreview } from './SourcePreview';
 interface FindingItemProps {
   finding: Finding;
   showMetricTag: boolean;
-  onInvestigate?: () => void;
+  onReply?: () => void;
 }
 
-export function FindingItem({ finding, showMetricTag, onInvestigate }: FindingItemProps) {
+export function FindingItem({ finding, showMetricTag, onReply }: FindingItemProps) {
   const [openSourceIds, setOpenSourceIds] = useState<string[]>([]);
 
   function toggleSource(id: string) {
@@ -59,14 +59,14 @@ export function FindingItem({ finding, showMetricTag, onInvestigate }: FindingIt
           )}
         </div>
 
-        {finding.kind === 'unknown' && finding.investigateQuestion && onInvestigate && (
+        {finding.kind === 'assumption' && onReply && (
           <button
             type="button"
-            onClick={onInvestigate}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-soft px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
+            onClick={onReply}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-soft bg-ink px-2.5 py-1 text-[11px] font-medium text-surface transition-colors hover:bg-ink/90"
           >
-            Investigate
-            <ArrowRight size={11} />
+            <MessageSquareReply size={11} />
+            Reply
           </button>
         )}
       </div>

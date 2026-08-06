@@ -1,5 +1,6 @@
-import { FileText, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { getSource } from '../../data/mockData';
+import { SourceIcon, SOURCE_PLATFORM } from './SourceIcon';
 
 interface CitationChipProps {
   sourceId: string;
@@ -9,13 +10,13 @@ interface CitationChipProps {
 
 export function CitationChip({ sourceId, isActive, onClick }: CitationChipProps) {
   const source = getSource(sourceId);
-  const shortLabel = source.name.split('—')[0].trim();
+  const label = SOURCE_PLATFORM[source.type];
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
         isActive
           ? 'border-ink bg-ink text-surface'
           : source.restricted
@@ -23,8 +24,8 @@ export function CitationChip({ sourceId, isActive, onClick }: CitationChipProps)
             : 'border-border-soft bg-surface-soft text-ink-soft hover:border-border hover:text-ink'
       }`}
     >
-      {source.restricted ? <Lock size={10} /> : <FileText size={10} />}
-      {shortLabel}
+      {source.restricted ? <Lock size={10} /> : <SourceIcon type={source.type} size={12} />}
+      {label}
     </button>
   );
 }

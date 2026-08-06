@@ -3,6 +3,7 @@ import {
   BarChart2,
   BarChart3,
   ChartNoAxesColumn,
+  Flag,
   LineChart,
   PieChart,
   X,
@@ -54,16 +55,18 @@ function ChartKindIcon({ kind }: { kind: ContextChartKind }) {
 interface ComposerContextCardProps {
   title: string;
   timeframeLabel: string;
-  chartKind: ContextChartKind;
+  chartKind?: ContextChartKind;
+  variant?: 'chart' | 'assumption';
   onRemove?: () => void;
   dimmed?: boolean;
 }
 
-/** Mockup-style chart context card for the composer and chat turns. */
+/** Mockup-style chart / assumption context card for the composer and chat turns. */
 export function ComposerContextCard({
   title,
   timeframeLabel,
-  chartKind,
+  chartKind = 'sparkline',
+  variant = 'chart',
   onRemove,
   dimmed = false,
 }: ComposerContextCardProps) {
@@ -74,9 +77,13 @@ export function ComposerContextCard({
       } ${dimmed ? 'opacity-40' : ''}`}
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
-        <ChartKindIcon kind={chartKind} />
+        {variant === 'assumption' ? (
+          <Flag size={14} strokeWidth={2} className="text-amber" />
+        ) : (
+          <ChartKindIcon kind={chartKind} />
+        )}
       </div>
-      <div className="min-w-0 pr-1">
+      <div className="min-w-0 max-w-[11rem] pr-1">
         <p className="truncate text-sm font-semibold leading-tight text-ink">{title}</p>
         <p className="truncate text-xs leading-tight text-composer-placeholder">{timeframeLabel}</p>
       </div>

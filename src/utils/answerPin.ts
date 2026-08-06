@@ -1,8 +1,8 @@
 import type { Answer } from '../types';
 
-/** True when any finding offers an investigate path. */
+/** True when any finding is an assumption the user can reply to. */
 export function answerCanSpawnChild(answer: Answer): boolean {
-  return answer.findings.some((f) => !!f.investigateQuestion);
+  return answer.findings.some((f) => f.kind === 'assumption');
 }
 
 /**
