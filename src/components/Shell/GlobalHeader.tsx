@@ -6,7 +6,8 @@ interface GlobalHeaderProps {
 }
 
 export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
-  const { openPanel } = useResearch();
+  const { openPanel, attachedContext, turns } = useResearch();
+  const hasInvestigationContext = attachedContext.length > 0 || turns.length > 0;
 
   return (
     <header className="z-30 flex h-14 shrink-0 items-center gap-3 bg-ink px-3 text-surface">
@@ -40,14 +41,23 @@ export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
         <button
           type="button"
           onClick={openPanel}
-          title="Open research panel"
-          aria-label="Open research panel"
-          className="inline-flex h-9 items-center gap-2 rounded-full bg-surface px-3 text-sm font-medium text-ink transition-opacity hover:opacity-90"
+          title={
+            hasInvestigationContext
+              ? 'Open research inspector'
+              : 'Open research inspector — select a chart on the dashboard to begin'
+          }
+          aria-label="Open research inspector"
+          className="relative inline-flex h-9 items-center gap-2 rounded-full bg-surface px-3 text-sm font-medium text-ink transition-opacity hover:opacity-90"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber via-sage to-ocean text-white">
             <Dna size={12} strokeWidth={2.25} />
           </span>
           <span className="hidden lg:inline">Research</span>
+          {attachedContext.length > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sage px-1 text-[9px] font-semibold text-white">
+              {attachedContext.length}
+            </span>
+          )}
         </button>
 
         <button

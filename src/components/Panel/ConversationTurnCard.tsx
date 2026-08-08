@@ -12,9 +12,11 @@ import { QueryCard } from './QueryCard';
 export function ConversationTurnCard({
   turn,
   isLatest,
+  onReviewShare,
 }: {
   turn: ConversationTurn;
   isLatest: boolean;
+  onReviewShare?: () => void;
 }) {
   const { submitResponseFeedback, replyToAssumption, answerClarifying, pinTrigger, turns } =
     useResearch();
@@ -77,6 +79,7 @@ export function ConversationTurnCard({
             archived={turn.archived}
             onReply={(finding) => replyToAssumption(turn.id, finding)}
             notifyTopic={isFirstAgentResponse ? notifyTopic : undefined}
+            onReviewShare={isLatest ? onReviewShare : undefined}
             onResponseThumbsUp={
               isLatest
                 ? () => submitResponseFeedback(turn.id, { value: 'up' })

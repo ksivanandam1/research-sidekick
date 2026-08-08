@@ -5,8 +5,11 @@ import { KPI_DEFINITIONS } from '../../data/mockData';
 import { DEFAULT_TIMEFRAME, formatTimeframeLabel } from '../../data/dashboardFilters';
 import { useResearch } from '../../state/ResearchContext';
 import { deriveInvestigationHeader } from '../../utils/panelHeader';
+import { deriveInvestigationSteps } from '../../utils/investigationSteps';
 import { PanelHeader } from './PanelHeader';
 import { ConversationTurnCard } from './ConversationTurnCard';
+import { CompactInvestigationStep } from './CompactInvestigationStep';
+import { InvestigationTrail } from './InvestigationTrail';
 import { FollowUpInput } from './FollowUpInput';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ActiveClarifyingCard } from './ClarifyingQuestions';
@@ -88,8 +91,12 @@ export function ChatPanel() {
     [turns, attachedContext],
   );
 
+  const investigationSteps = useMemo(() => deriveInvestigationSteps(turns), [turns]);
+  const priorTurns = turns.slice(0, -1);
+  const latestTurn = turns[turns.length - 1] ?? null;
+
   const lastReadyTurn = [...turns].reverse().find((t) => t.stage === 'ready') ?? null;
-  const latestTurnId = turns[turns.length - 1]?.id ?? null;
+  const latestTurnId = latestTurn?.id ?? null;
 
   const activeClarifyingTurn = [...turns]
     .reverse()
@@ -147,7 +154,7 @@ export function ChatPanel() {
     <div className="flex h-full flex-col">
       <PanelHeader
         subject={headerState.subject}
-        scopeLabels={headerState.scopeLabels}
+        scopeItems={headerState.scopeItems}
         statusLabel={headerState.statusLabel}
         statusTone={headerState.statusTone}
         onClose={closePanel}
@@ -165,14 +172,19 @@ export function ChatPanel() {
           {turns.length === 0 ? (
             <InvestigationEmptyState />
           ) : (
-            <div className="flex flex-col gap-5">
-              {turns.map((turn, index) => (
-                <ConversationTurnCard
-                  key={turn.id}
-                  turn={turn}
-                  isLatest={index === turns.length - 1}
-                />
+            <div className="flex flex-col gap-4">
+              <InvestigationTrail steps={investigationSteps} />
+              {priorTurns.map((turn, index) => (
+                <CompactInvestigationStep key={turn.id} turn={turn} stepNumber={index + 1} />
               ))}
+              {latestTurn && (
+                <ConversationTurnCard
+                  key={latestTurn.id}
+                  turn={latestTurn}
+                  isLatest
+                  onReviewShare={() => setExportOpen(true)}
+                />
+              )}
               <div ref={spacerRef} aria-hidden className="shrink-0" />
             </div>
           )}

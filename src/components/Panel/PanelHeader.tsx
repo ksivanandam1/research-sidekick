@@ -1,9 +1,11 @@
 import { Share2, SquarePen, X } from 'lucide-react';
+import type { ChartAttachedContextItem } from '../../types';
 import type { InvestigationStatusTone } from '../../utils/panelHeader';
+import { ComposerContextCard } from './ContextChip';
 
 interface PanelHeaderProps {
   subject: string;
-  scopeLabels: string[];
+  scopeItems: ChartAttachedContextItem[];
   statusLabel: string;
   statusTone: InvestigationStatusTone;
   onClose: () => void;
@@ -25,7 +27,7 @@ const STATUS_STYLES: Record<InvestigationStatusTone, string> = {
 
 export function PanelHeader({
   subject,
-  scopeLabels,
+  scopeItems,
   statusLabel,
   statusTone,
   onClose,
@@ -38,13 +40,25 @@ export function PanelHeader({
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-snug text-ink">{subject}</p>
-          {scopeLabels.length > 0 && (
-            <p className="mt-0.5 truncate text-[11px] text-ink-faint">
-              Scope: {scopeLabels.join(' · ')}
-            </p>
+
+          {scopeItems.length > 0 && (
+            <div className="-mx-0.5 mt-2 overflow-x-auto pb-0.5">
+              <div className="flex w-max min-w-full gap-1.5 px-0.5">
+                {scopeItems.map((item) => (
+                  <ComposerContextCard
+                    key={item.instanceId}
+                    title={item.title}
+                    timeframeLabel={item.timeframeLabel}
+                    chartKind={item.chartKind}
+                    compact
+                  />
+                ))}
+              </div>
+            </div>
           )}
+
           <span
-            className={`mt-1.5 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLES[statusTone]}`}
+            className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLES[statusTone]}`}
           >
             {statusLabel}
           </span>
@@ -73,8 +87,8 @@ export function PanelHeader({
           <button
             type="button"
             onClick={onClose}
-            title="Close panel"
-            aria-label="Close panel"
+            title="Close inspector"
+            aria-label="Close inspector"
             className={iconBtn}
           >
             <X size={16} strokeWidth={1.75} />

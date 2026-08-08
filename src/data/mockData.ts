@@ -637,7 +637,15 @@ export const REVENUE_DIP_ANSWER: Answer = {
       confidence: 'medium',
       sourceIds: ['srcFinanceRevenue'],
     },
+    {
+      id: 'revenue-u1',
+      kind: 'unknown',
+      metricId: 'revenue',
+      text: 'Did outbound rep headcount or first-meeting volume drop in Q3?',
+      sourceIds: [],
+    },
   ],
+  nextCheck: 'Confirm with RevOps whether outbound capacity or late-stage conversion dropped in Q3.',
 };
 
 export const CHURN_SOLO_ANSWER: Answer = {

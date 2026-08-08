@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronUp, Compass, Share2 } from 'lucide-react';
 import type { Answer, Finding, ResponseFeedback, ResponseFeedbackReason, Stage } from '../../types';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { ConfidenceBadge } from './ConfidenceBadge';
@@ -16,8 +16,8 @@ interface AnswerSectionProps {
   responseFeedback?: ResponseFeedback;
   archived?: boolean;
   onReply?: (finding: Finding) => void;
-  /** Topic for the change-notification question in the agent response. */
   notifyTopic?: string;
+  onReviewShare?: () => void;
   onResponseThumbsUp?: () => void;
   onResponseThumbsDown?: (reasons: ResponseFeedbackReason[], comment: string) => void;
 }
@@ -26,32 +26,26 @@ function SkeletonLine({ width }: { width: string }) {
   return <div className="h-2.5 animate-pulse rounded-full bg-border-soft" style={{ width }} />;
 }
 
-interface FindingGroupProps {
-  heading: string;
-  findings: Finding[];
-  defaultExpanded: boolean;
-  showMetricTags: boolean;
-  onReply?: (finding: Finding) => void;
+interface ArtifactSectionProps {
+  title: string;
+  count?: number;
+  defaultExpanded?: boolean;
+  children: ReactNode;
 }
 
-function FindingGroup({
-  heading,
-  findings,
-  defaultExpanded,
-  showMetricTags,
-  onReply,
-}: FindingGroupProps) {
+function ArtifactSection({ title, count, defaultExpanded = true, children }: ArtifactSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2 border-t border-border-soft pt-4 first:border-t-0 first:pt-0">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-center justify-between gap-2 rounded-lg px-0.5 py-0.5 text-left transition-colors hover:bg-surface-soft"
       >
         <span className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-          {heading} · {findings.length}
+          {title}
+          {count != null ? ` · ${count}` : ''}
         </span>
         {expanded ? (
           <ChevronUp size={13} className="shrink-0 text-ink-faint" />
@@ -59,18 +53,28 @@ function FindingGroup({
           <ChevronDown size={13} className="shrink-0 text-ink-faint" />
         )}
       </button>
-      {expanded && (
-        <div className="flex flex-col gap-2">
-          {findings.map((finding) => (
-            <FindingItem
-              key={finding.id}
-              finding={finding}
-              showMetricTag={showMetricTags}
-              onReply={onReply ? () => onReply(finding) : undefined}
-            />
-          ))}
-        </div>
-      )}
+      {expanded && children}
+    </section>
+  );
+}
+
+interface FindingGroupProps {
+  findings: Finding[];
+  showMetricTags: boolean;
+  onReply?: (finding: Finding) => void;
+}
+
+function FindingGroup({ findings, showMetricTags, onReply }: FindingGroupProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      {findings.map((finding) => (
+        <FindingItem
+          key={finding.id}
+          finding={finding}
+          showMetricTag={showMetricTags}
+          onReply={onReply && finding.kind === 'assumption' ? () => onReply(finding) : undefined}
+        />
+      ))}
     </div>
   );
 }
@@ -84,6 +88,7 @@ export function AnswerSection({
   archived = false,
   onReply,
   notifyTopic,
+  onReviewShare,
   onResponseThumbsUp,
   onResponseThumbsDown,
 }: AnswerSectionProps) {
@@ -91,53 +96,112 @@ export function AnswerSection({
   const summaryText = useTypewriter(answer.summary, summaryActive);
   const summaryVisible = stage === 'drafting' || stage === 'linking' || stage === 'ready';
   const isReady = stage === 'ready';
-  const citations = answer.findings.filter((f) => f.kind === 'evidence');
+
+  const evidence = answer.findings.filter(
+    (f) => f.kind === 'evidence' && revealedFindingIds.includes(f.id),
+  );
   const assumptions = answer.findings.filter(
     (f) => f.kind === 'assumption' && revealedFindingIds.includes(f.id),
   );
+  const openQuestions = answer.findings.filter(
+    (f) => f.kind === 'unknown' && revealedFindingIds.includes(f.id),
+  );
+
+  const hasAssumptionsToChallenge = assumptions.length > 0 && !archived && !!onReply;
 
   return (
-    <div className={`flex flex-col gap-4 ${archived ? 'opacity-70' : ''}`}>
-      <div className="flex flex-col gap-3">
-        {summaryVisible && (archived || answer.confidence) && (
-          <ConfidenceBadge level={answer.confidence} archived={archived} />
-        )}
-        {summaryVisible ? (
-          <RichSummary text={summaryText} citations={citations} />
-        ) : (
-          <div className="flex flex-col gap-2">
-            <SkeletonLine width="92%" />
-            <SkeletonLine width="84%" />
-            <SkeletonLine width="70%" />
+    <article
+      className={`flex flex-col gap-1 rounded-xl border border-border-soft bg-surface p-4 shadow-soft ${
+        archived ? 'opacity-70' : ''
+      }`}
+    >
+      <ArtifactSection title="Summary">
+        <div className="flex flex-col gap-3">
+          {summaryVisible && (archived || answer.confidence) && (
+            <ConfidenceBadge level={answer.confidence} archived={archived} />
+          )}
+          {summaryVisible ? (
+            <RichSummary text={summaryText} citations={evidence} />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <SkeletonLine width="92%" />
+              <SkeletonLine width="84%" />
+              <SkeletonLine width="70%" />
+            </div>
+          )}
+        </div>
+        {summaryVisible && answer.chart && (
+          <div className="mt-3">
+            <AnswerInsightChart chart={answer.chart} />
           </div>
         )}
-      </div>
+      </ArtifactSection>
 
-      {summaryVisible && answer.chart && <AnswerInsightChart chart={answer.chart} />}
+      {evidence.length > 0 && (
+        <ArtifactSection title="Evidence" count={evidence.length}>
+          <FindingGroup findings={evidence} showMetricTags={showMetricTags} />
+        </ArtifactSection>
+      )}
 
       {assumptions.length > 0 && (
-        <FindingGroup
-          heading="Assumptions"
-          findings={assumptions}
-          defaultExpanded={true}
-          showMetricTags={showMetricTags}
-          onReply={archived ? undefined : onReply}
-        />
+        <ArtifactSection title="Assumptions" count={assumptions.length}>
+          <FindingGroup findings={assumptions} showMetricTags={showMetricTags} onReply={onReply} />
+        </ArtifactSection>
+      )}
+
+      {openQuestions.length > 0 && (
+        <ArtifactSection title="Open questions" count={openQuestions.length}>
+          <FindingGroup findings={openQuestions} showMetricTags={showMetricTags} />
+        </ArtifactSection>
+      )}
+
+      {isReady && answer.nextCheck && (
+        <ArtifactSection title="Next check" defaultExpanded={true}>
+          <div className="flex items-start gap-2 rounded-xl border border-ocean-soft bg-ocean-soft/60 p-3">
+            <Compass size={14} className="mt-0.5 shrink-0 text-ocean" />
+            <p className="text-xs leading-relaxed text-ink-soft">{answer.nextCheck}</p>
+          </div>
+        </ArtifactSection>
       )}
 
       {isReady && notifyTopic && !archived && (
-        <p className="text-sm leading-relaxed text-ink">
+        <p className="border-t border-border-soft pt-3 text-sm leading-relaxed text-ink">
           Would you like me to notify you on future changes to {notifyTopic}?
         </p>
       )}
 
-      {isReady && !archived && onResponseThumbsUp && onResponseThumbsDown && (
-        <ResponseFeedbackControls
-          feedback={responseFeedback}
-          onThumbsUp={onResponseThumbsUp}
-          onThumbsDown={onResponseThumbsDown}
-        />
+      {isReady && !archived && (onReviewShare || onResponseThumbsUp) && (
+        <div className="flex flex-col gap-3 border-t border-border-soft pt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+            Before you share
+          </p>
+          {hasAssumptionsToChallenge && (
+            <p className="text-[11px] leading-relaxed text-ink-faint">
+              Review evidence and challenge any assumptions that don&apos;t hold before sharing with
+              stakeholders.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {onReviewShare && (
+              <button
+                type="button"
+                onClick={onReviewShare}
+                className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-[11px] font-medium text-surface transition-opacity hover:opacity-90"
+              >
+                <Share2 size={12} />
+                Review & share
+              </button>
+            )}
+          </div>
+          {onResponseThumbsUp && onResponseThumbsDown && (
+            <ResponseFeedbackControls
+              feedback={responseFeedback}
+              onThumbsUp={onResponseThumbsUp}
+              onThumbsDown={onResponseThumbsDown}
+            />
+          )}
+        </div>
       )}
-    </div>
+    </article>
   );
 }

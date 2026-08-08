@@ -24,7 +24,7 @@ export function ContextChip({ title, onRemove }: ContextChipProps) {
         <button
           type="button"
           onClick={onRemove}
-          title={`Remove ${title} from context`}
+          title={`Remove ${title} from investigation scope`}
           className="ml-0.5 rounded-full p-0.5 text-ink-faint transition-colors hover:bg-border-soft hover:text-ink"
         >
           <X size={11} />
@@ -34,8 +34,12 @@ export function ContextChip({ title, onRemove }: ContextChipProps) {
   );
 }
 
-function ChartKindIcon({ kind }: { kind: ContextChartKind }) {
-  const props = { size: 14, strokeWidth: 2, className: 'text-ink' } as const;
+function ChartKindIcon({ kind, compact = false }: { kind: ContextChartKind; compact?: boolean }) {
+  const props = {
+    size: compact ? 12 : 14,
+    strokeWidth: 2,
+    className: 'text-ink',
+  } as const;
   switch (kind) {
     case 'sparkline':
       return <Activity {...props} />;
@@ -59,9 +63,10 @@ interface ComposerContextCardProps {
   variant?: 'chart' | 'assumption';
   onRemove?: () => void;
   dimmed?: boolean;
+  compact?: boolean;
 }
 
-/** Mockup-style chart / assumption context card for the composer and chat turns. */
+/** Mockup-style chart / assumption context card for the composer and investigation header. */
 export function ComposerContextCard({
   title,
   timeframeLabel,
@@ -69,29 +74,46 @@ export function ComposerContextCard({
   variant = 'chart',
   onRemove,
   dimmed = false,
+  compact = false,
 }: ComposerContextCardProps) {
   return (
     <div
       className={`relative flex shrink-0 items-center gap-2.5 rounded-xl bg-composer-chip py-2 pl-2 ${
         onRemove ? 'pr-8' : 'pr-3'
-      } ${dimmed ? 'opacity-40' : ''}`}
+      } ${dimmed ? 'opacity-40' : ''} ${compact ? 'gap-2 py-1.5 pl-1.5' : ''}`}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
+      <div
+        className={`flex shrink-0 items-center justify-center rounded-lg bg-white ${
+          compact ? 'h-7 w-7' : 'h-9 w-9'
+        }`}
+      >
         {variant === 'assumption' ? (
-          <Flag size={14} strokeWidth={2} className="text-amber" />
+          <Flag size={compact ? 12 : 14} strokeWidth={2} className="text-amber" />
         ) : (
-          <ChartKindIcon kind={chartKind} />
+          <ChartKindIcon kind={chartKind} compact={compact} />
         )}
       </div>
-      <div className="min-w-0 max-w-[11rem] pr-1">
-        <p className="truncate text-sm font-semibold leading-tight text-ink">{title}</p>
-        <p className="truncate text-xs leading-tight text-composer-placeholder">{timeframeLabel}</p>
+      <div className={`min-w-0 pr-1 ${compact ? 'max-w-[7rem]' : 'max-w-[11rem]'}`}>
+        <p
+          className={`truncate font-semibold leading-tight text-ink ${
+            compact ? 'text-xs' : 'text-sm'
+          }`}
+        >
+          {title}
+        </p>
+        <p
+          className={`truncate leading-tight text-composer-placeholder ${
+            compact ? 'text-[10px]' : 'text-xs'
+          }`}
+        >
+          {timeframeLabel}
+        </p>
       </div>
       {onRemove && (
         <button
           type="button"
           onClick={onRemove}
-          title={`Remove ${title} from context`}
+          title={`Remove ${title} from investigation scope`}
           aria-label={`Remove ${title} from context`}
           className="absolute right-1.5 top-1.5 rounded-md p-0.5 text-composer-placeholder transition-colors hover:bg-white hover:text-ink"
         >

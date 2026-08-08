@@ -1,4 +1,4 @@
-import type { AttachedContextItem, ConversationTurn, Stage } from '../types';
+import type { AttachedContextItem, ChartAttachedContextItem, ConversationTurn, Stage } from '../types';
 import { isChartContext } from '../types';
 import { getAnswerHeadline } from './answerPin';
 
@@ -7,6 +7,7 @@ export type InvestigationStatusTone = 'neutral' | 'active' | 'ready' | 'stopped'
 export interface InvestigationHeaderState {
   subject: string;
   scopeLabels: string[];
+  scopeItems: ChartAttachedContextItem[];
   statusLabel: string;
   statusTone: InvestigationStatusTone;
 }
@@ -56,6 +57,7 @@ export function deriveInvestigationHeader(
       return {
         subject: 'New investigation',
         scopeLabels: composerScope,
+        scopeItems: attachedContext.filter(isChartContext),
         statusLabel: 'Ready to investigate',
         statusTone: 'neutral',
       };
@@ -63,11 +65,14 @@ export function deriveInvestigationHeader(
     return {
       subject: 'Research panel',
       scopeLabels: [],
+      scopeItems: [],
       statusLabel: 'Awaiting chart selection',
       statusTone: 'neutral',
     };
   }
 
+  const turnScopeItems = (latestTurn.contextItems ?? []).filter(isChartContext);
+  const scopeItems = turnScopeItems.length > 0 ? turnScopeItems : attachedContext.filter(isChartContext);
   const scopeLabels =
     scopeLabelsFromItems(latestTurn.contextItems ?? []).length > 0
       ? scopeLabelsFromItems(latestTurn.contextItems ?? [])
@@ -77,6 +82,7 @@ export function deriveInvestigationHeader(
     return {
       subject: subjectForTurn(latestTurn),
       scopeLabels,
+      scopeItems,
       statusLabel: 'Awaiting your input',
       statusTone: 'clarifying',
     };
@@ -87,6 +93,7 @@ export function deriveInvestigationHeader(
     return {
       subject: subjectForTurn(latestTurn),
       scopeLabels,
+      scopeItems,
       statusLabel: label,
       statusTone: tone,
     };
@@ -95,6 +102,7 @@ export function deriveInvestigationHeader(
   return {
     subject: subjectForTurn(latestTurn),
     scopeLabels,
+    scopeItems,
     statusLabel: latestTurn.stopped ? 'Stopped' : 'Ready for review',
     statusTone: latestTurn.stopped ? 'stopped' : 'ready',
   };
