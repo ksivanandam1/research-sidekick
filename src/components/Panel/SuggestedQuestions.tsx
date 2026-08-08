@@ -1,4 +1,3 @@
-import { Dna } from 'lucide-react';
 import { getContextItem } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 import { isChartContext } from '../../types';
@@ -25,9 +24,8 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
           key={q}
           type="button"
           onClick={() => onSelect(q)}
-          className="prompt-rise inline-flex max-w-full items-center gap-1 rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+          className="prompt-rise inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-3 py-1.5 text-left text-sm font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
         >
-          <Dna size={10} className="shrink-0" />
           <span className="truncate">{q}</span>
         </button>
       ))}
