@@ -125,7 +125,7 @@ export function ConversationTurnCard({
 
       {!isClarifying && turn.answer && (
         <>
-          <ThoughtTrace stage={turn.stage} stopped={turn.stopped} />
+          <ThoughtTrace stage={turn.stage} answer={turn.answer} stopped={turn.stopped} />
           <AnswerSection
             answer={turn.answer}
             stage={turn.stage}

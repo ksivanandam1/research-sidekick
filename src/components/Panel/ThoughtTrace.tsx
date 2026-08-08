@@ -1,22 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, CircleDashed, OctagonX } from 'lucide-react';
-import type { Stage } from '../../types';
+import type { Answer, Stage } from '../../types';
+import { buildPipelineThoughtSteps, getThoughtTraceSummary } from '../../data/mockData';
 import { MoonLoader } from './MoonLoader';
 
 interface ThoughtTraceProps {
   stage: Stage;
+  answer: Answer;
   stopped?: boolean;
 }
 
 type StepStatus = 'pending' | 'running' | 'complete' | 'stopped';
-
-const THINKING_STEPS: { id: string; label: string; stage: Stage }[] = [
-  { id: 'clarifying', label: 'Clarifying assumptions', stage: 'analysing' },
-  { id: 'retrieving', label: 'Retrieving related Q3 data', stage: 'retrieving' },
-  { id: 'analysing', label: 'Analysing Q3 revenue trends and decisions', stage: 'citing' },
-  { id: 'drafting', label: 'Drafting an explanation of the dip', stage: 'drafting' },
-  { id: 'linking', label: 'Linking figures to source reports', stage: 'linking' },
-];
 
 const STAGE_ORDER: Stage[] = ['idle', 'analysing', 'retrieving', 'citing', 'drafting', 'linking', 'ready'];
 
@@ -35,23 +29,70 @@ function getStepStatus(stepStage: Stage, currentStage: Stage, stopped?: boolean)
 
 function StatusIcon({ status }: { status: StepStatus }) {
   if (status === 'complete') return <CheckCircle2 size={13} className="mt-0.5 shrink-0 text-sage" />;
-  if (status === 'running') return <MoonLoader size={13} className="mt-0.5" />;
+  if (status === 'running') return <MoonLoader size={13} className="mt-0.5 shrink-0" />;
   if (status === 'stopped') return <OctagonX size={13} className="mt-0.5 shrink-0 text-terracotta" />;
   return <CircleDashed size={13} className="mt-0.5 shrink-0 text-ink-faint" />;
 }
 
+function ThoughtStepRow({
+  label,
+  detail,
+  status,
+}: {
+  label: string;
+  detail: string;
+  status: StepStatus;
+}) {
+  const showDetail = status !== 'pending';
+
+  return (
+    <div className="flex items-start gap-2 py-0.5">
+      <StatusIcon status={status} />
+      <div className="min-w-0 flex-1">
+        <p
+          className={`text-xs leading-snug ${
+            status === 'running'
+              ? 'thought-shimmer-text font-medium'
+              : status === 'pending'
+                ? 'font-medium text-ink-faint'
+                : status === 'stopped'
+                  ? 'font-medium text-ink-soft'
+                  : 'font-medium text-ink-soft'
+          }`}
+        >
+          {label}
+          {status === 'stopped' && (
+            <span className="ml-1.5 text-[11px] font-medium text-terracotta">Stopped</span>
+          )}
+        </p>
+        {showDetail && detail && (
+          <p
+            className={`mt-0.5 text-[11px] leading-relaxed ${
+              status === 'running' ? 'text-ink-faint' : 'text-ink-faint'
+            }`}
+          >
+            {detail}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Collapsed by default. While the agent is working, the collapsed header shows
- * the active step label (shimmering). Expandable for the full trace.
+ * the active step label (shimmering). Expandable for the full trace with concrete
+ * detail subtext under each stage label (Claude-style).
  */
-export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
+export function ThoughtTrace({ stage, answer, stopped }: ThoughtTraceProps) {
   const isReady = stage === 'ready';
   const [expanded, setExpanded] = useState(false);
 
-  const rows = THINKING_STEPS.map((step) => ({
-    id: step.id,
-    text: step.label,
-    shortText: step.label,
+  const pipelineSteps = useMemo(() => buildPipelineThoughtSteps(answer), [answer]);
+  const summaryLabel = useMemo(() => getThoughtTraceSummary(answer), [answer]);
+
+  const rows = pipelineSteps.map((step) => ({
+    ...step,
     status: getStepStatus(step.stage, stage, stopped),
   }));
 
@@ -66,15 +107,22 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="flex w-full items-center gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
+          className="flex w-full items-start gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
         >
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <MoonLoader size={12} />
-            <span key={activeRow.id} className="thought-shimmer-text truncate text-[11px] font-medium">
-              {activeRow.shortText}
+          <span className="inline-flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="inline-flex items-center gap-1.5">
+              <MoonLoader size={12} />
+              <span key={activeRow.id} className="thought-shimmer-text truncate text-[11px] font-medium">
+                {activeRow.label}
+              </span>
             </span>
+            {activeRow.detail && (
+              <span className="line-clamp-1 pl-[22px] text-[11px] leading-relaxed text-ink-faint">
+                {activeRow.detail}
+              </span>
+            )}
           </span>
-          <ChevronDown size={13} className="shrink-0 text-ink-faint" />
+          <ChevronDown size={13} className="mt-0.5 shrink-0 text-ink-faint" />
         </button>
       );
     }
@@ -83,11 +131,11 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="inline-flex items-center gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
+        className="inline-flex max-w-full items-center gap-1 rounded-lg px-1 py-1 text-left transition-colors hover:bg-surface-soft"
       >
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-faint">
-          <CheckCircle2 size={12} className="text-sage" />
-          Analysed Q3 revenue decline
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-ink-faint">
+          <CheckCircle2 size={12} className="shrink-0 text-sage" />
+          <span className="truncate">{summaryLabel}</span>
         </span>
         <ChevronDown size={13} className="shrink-0 text-ink-faint" />
       </button>
@@ -95,36 +143,27 @@ export function ThoughtTrace({ stage, stopped }: ThoughtTraceProps) {
   }
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-border-soft bg-surface-soft p-2.5">
+    <div className="flex flex-col gap-1 rounded-xl border border-border-soft bg-surface-soft p-2.5">
       <button
         type="button"
         onClick={() => setExpanded(false)}
-        className="inline-flex items-center gap-1 pb-1 text-left"
+        className="inline-flex items-center gap-1 pb-1.5 text-left"
       >
         <span className="text-[11px] font-medium text-ink-faint">
-          {isReady ? 'Analysed Q3 revenue decline' : 'Thinking…'}
+          {isReady ? summaryLabel : 'Thinking…'}
         </span>
         <ChevronUp size={13} className="shrink-0 text-ink-faint" />
       </button>
-      {rows.map((row) => (
-        <div key={row.id} className="flex items-start gap-1.5">
-          <StatusIcon status={row.status} />
-          <p
-            className={`text-xs leading-relaxed ${
-              row.status === 'running'
-                ? 'thought-shimmer-text font-medium'
-                : row.status === 'pending'
-                  ? 'text-ink-faint'
-                  : 'text-ink-soft'
-            }`}
-          >
-            {row.status === 'running' ? row.shortText : row.text}
-            {row.status === 'stopped' && (
-              <span className="ml-1.5 text-[11px] font-medium text-terracotta">Stopped</span>
-            )}
-          </p>
-        </div>
-      ))}
+      <div className="flex flex-col gap-1.5 border-t border-border-soft pt-1.5">
+        {rows.map((row) => (
+          <ThoughtStepRow
+            key={row.id}
+            label={row.label}
+            detail={row.detail}
+            status={row.status}
+          />
+        ))}
+      </div>
     </div>
   );
 }

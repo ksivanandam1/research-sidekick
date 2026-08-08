@@ -10,6 +10,7 @@ import type {
   MetricId,
   Source,
   SourceType,
+  PipelineThoughtStep,
   ThoughtStep,
 } from '../types';
 import { isMetricId } from '../types';
@@ -360,6 +361,125 @@ export function buildThoughtSteps(answer: Answer): ThoughtStep[] {
         text: forThoughtTrace(`${shortText}: found ${f.text}`),
       };
     });
+}
+
+const PIPELINE_STEP_DEFS: Pick<PipelineThoughtStep, 'id' | 'label' | 'stage'>[] = [
+  { id: 'clarifying', label: 'Clarifying assumptions', stage: 'analysing' },
+  { id: 'retrieving', label: 'Retrieving related Q3 data', stage: 'retrieving' },
+  { id: 'analysing', label: 'Analysing Q3 revenue trends and decisions', stage: 'citing' },
+  { id: 'drafting', label: 'Drafting an explanation of the dip', stage: 'drafting' },
+  { id: 'linking', label: 'Linking figures to source reports', stage: 'linking' },
+];
+
+/** Pull numbered steps from the answer's "### How I got here" section. */
+function extractHowIGotHere(summary: string): string[] {
+  const marker = '### How I got here';
+  const start = summary.indexOf(marker);
+  if (start === -1) return [];
+
+  const after = summary.slice(start + marker.length).replace(/^\s*\n/, '');
+  const section = after.split(/\n### /)[0]?.trim() ?? '';
+  if (!section) return [];
+
+  const items: string[] = [];
+  const re = /(\d+)\.\s+([\s\S]*?)(?=\n\d+\.\s+|$)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(section)) !== null) {
+    items.push(forThoughtTrace(match[2].replace(/\[\d+\]/g, '').trim()));
+  }
+  return items;
+}
+
+function buildRetrievalDetail(answer: Answer): string {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const finding of answer.findings) {
+    for (const id of finding.sourceIds) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const source = getSource(id);
+      if (source.restricted) continue;
+      const verb = QUERY_VERB[source.type];
+      const snippet = source.excerpts[0]?.split(/[.!]/)[0]?.trim();
+      lines.push(snippet ? `${verb}: ${snippet}` : `${verb} for ${source.name}`);
+    }
+  }
+  if (lines.length === 0) {
+    return 'Pulled related metrics and source reports for the attached context.';
+  }
+  return lines.slice(0, 4).join('. ') + '.';
+}
+
+function buildLinkingDetail(answer: Answer): string {
+  const evidence = answer.findings.filter((f) => f.kind === 'evidence' && f.sourceIds.length > 0);
+  if (evidence.length === 0) {
+    return 'Cross-checked figures against available source reports.';
+  }
+  const linked = evidence.slice(0, 3).map((f) => {
+    const source = getSource(f.sourceIds[0]);
+    return `${source.name.split('(')[0].trim()} supports "${f.text.split('.')[0]}"`;
+  });
+  return linked.join('. ') + '.';
+}
+
+function defaultAnalysingDetail(answer: Answer): string {
+  const evidence = answer.findings.filter((f) => f.kind === 'evidence');
+  if (evidence.length >= 2) {
+    return forThoughtTrace(
+      `Compared ${evidence[0].text.split('.')[0]} against ${evidence[1].text.split('.')[0]}.`,
+    );
+  }
+  if (evidence[0]) {
+    return forThoughtTrace(`Reviewed ${evidence[0].text.split('.')[0]}.`);
+  }
+  return 'Compared period-over-period trends and broke the move down by segment.';
+}
+
+/**
+ * Pipeline thought trace for the side panel: short stage label plus concrete
+ * detail subtext derived from the answer's "How I got here" script when present.
+ */
+export function buildPipelineThoughtSteps(answer: Answer): PipelineThoughtStep[] {
+  const howSteps = extractHowIGotHere(answer.summary);
+
+  const clarifyingDetail =
+    howSteps.length > 0
+      ? 'Applied your clarifying answers on billing one-offs, forecast method, Pro churn, and outbound coverage before running the diagnosis.'
+      : 'Scoped the question to the attached charts and metrics before retrieving data.';
+
+  const analysingDetail =
+    howSteps.length >= 2
+      ? `${howSteps[0]} ${howSteps[1]}`
+      : howSteps[0] ?? defaultAnalysingDetail(answer);
+
+  const draftingDetail =
+    howSteps[2] ??
+    howSteps[howSteps.length - 1] ??
+    'Drafted a plain-language explanation from the evidence gathered.';
+
+  const detailById: Record<string, string> = {
+    clarifying: clarifyingDetail,
+    retrieving: buildRetrievalDetail(answer),
+    analysing: analysingDetail,
+    drafting: draftingDetail,
+    linking: buildLinkingDetail(answer),
+  };
+
+  return PIPELINE_STEP_DEFS.map((def) => ({
+    ...def,
+    detail: forThoughtTrace(detailById[def.id] ?? ''),
+  }));
+}
+
+/** One-line label for the collapsed thought trace once analysis is complete. */
+export function getThoughtTraceSummary(answer: Answer): string {
+  if (answer.pinSummary) {
+    const short = answer.pinSummary.split(/[.!]/)[0]?.trim();
+    if (short && short.length <= 52) return short;
+  }
+  const heading = answer.summary.match(/## (.+)/)?.[1]?.trim();
+  if (heading && heading.length <= 52) return heading;
+  return 'Analysis complete';
 }
 
 /** Every distinct source considered while building an answer, in first-seen order. */

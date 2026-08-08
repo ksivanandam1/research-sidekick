@@ -230,6 +230,14 @@ export interface ThoughtStep {
   shortText: string;
 }
 
+/** One row in the pipeline thought trace (label + concrete detail subtext). */
+export interface PipelineThoughtStep {
+  id: string;
+  label: string;
+  detail: string;
+  stage: Stage;
+}
+
 export interface SavedCheck {
   id: string;
   question: string;
