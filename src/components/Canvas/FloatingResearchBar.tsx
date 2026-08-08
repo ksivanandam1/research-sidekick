@@ -96,7 +96,7 @@ export function FloatingResearchBar() {
             type="button"
             onClick={handleSubmit}
             disabled={!text.trim()}
-            title="Ask Sidekick"
+            title="Open research panel"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-surface transition-opacity disabled:opacity-35"
           >
             <ArrowUp size={16} />

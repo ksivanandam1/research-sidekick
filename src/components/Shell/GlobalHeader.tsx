@@ -40,14 +40,14 @@ export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
         <button
           type="button"
           onClick={openPanel}
-          title="Ask Sidekick"
-          aria-label="Ask Sidekick"
+          title="Open research panel"
+          aria-label="Open research panel"
           className="inline-flex h-9 items-center gap-2 rounded-full bg-surface px-3 text-sm font-medium text-ink transition-opacity hover:opacity-90"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber via-sage to-ocean text-white">
             <Dna size={12} strokeWidth={2.25} />
           </span>
-          <span className="hidden lg:inline">Ask Sidekick</span>
+          <span className="hidden lg:inline">Research</span>
         </button>
 
         <button

@@ -53,6 +53,7 @@ export function useAgentRun() {
   }, []);
 
   const runAnswerJob = useCallback(async (args: RunAnswerJobArgs) => {
+    cancelledRef.current = false;
     const { evidenceFindingIds, otherFindingIds, onStage, onFindingsRevealed } = args;
     const cancelled = () => cancelledRef.current;
 
@@ -90,6 +91,7 @@ export function useAgentRun() {
   }, []);
 
   const runRevisionJob = useCallback(async (args: RunRevisionJobArgs) => {
+    cancelledRef.current = false;
     const { onStart, onDone } = args;
     onStart();
     await sleep(REVISION_DELAY_MS);
@@ -97,5 +99,9 @@ export function useAgentRun() {
     onDone();
   }, []);
 
-  return { runAnswerJob, runRevisionJob };
+  const cancelRun = useCallback(() => {
+    cancelledRef.current = true;
+  }, []);
+
+  return { runAnswerJob, runRevisionJob, cancelRun };
 }

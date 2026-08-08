@@ -39,7 +39,7 @@ export function DimensionCard({ definition, isAttached, onAdd, onRemove }: Dimen
           <button
             type="button"
             onClick={isAttached ? onRemove : onAdd}
-            title={isAttached ? 'Remove from chat context' : 'Add to chat'}
+            title={isAttached ? 'Remove from investigation scope' : 'Include in investigation'}
             className={`${iconBtn} ${isAttached ? 'border-sage-soft bg-sage-soft text-sage' : ''}`}
           >
             {isAttached ? <Minus size={14} /> : <Plus size={14} />}

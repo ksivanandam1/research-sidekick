@@ -119,14 +119,20 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
       return { ...state, turns: [...state.turns, action.turn], attachedContext: [] };
     }
     case 'SET_TURN_STAGE': {
-      return updateTurn(state, action.turnId, (t) => ({
-        ...t,
-        stage: action.stage,
-        phase: action.stage === 'ready' && t.phase === 'diagnosing' ? 'done' : t.phase,
-      }));
+      return updateTurn(state, action.turnId, (t) => {
+        if (t.stopped) return t;
+        return {
+          ...t,
+          stage: action.stage,
+          phase: action.stage === 'ready' && t.phase === 'diagnosing' ? 'done' : t.phase,
+        };
+      });
     }
     case 'REVEAL_FINDINGS': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, revealedFindingIds: action.findingIds }));
+      return updateTurn(state, action.turnId, (t) => {
+        if (t.stopped) return t;
+        return { ...t, revealedFindingIds: action.findingIds };
+      });
     }
     case 'START_DRILLDOWN': {
       return updateTurn(state, action.turnId, (t) => ({
@@ -155,7 +161,13 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
     }
     case 'STOP_TURN': {
       if (!action.path || action.path.length === 0) {
-        return updateTurn(state, action.turnId, (t) => ({ ...t, stopped: true }));
+        return updateTurn(state, action.turnId, (t) => {
+          const stopped = { ...t, stopped: true };
+          if (t.phase === 'clarifying' && t.stage !== 'ready') {
+            return { ...stopped, stage: 'ready' };
+          }
+          return stopped;
+        });
       }
       return updateTurn(state, action.turnId, (t) => ({
         ...t,

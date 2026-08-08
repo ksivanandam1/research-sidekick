@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, MicVocal, Square } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 import { isAssumptionContext } from '../../types';
 import { ComposerContextStrip } from './ContextTray';
@@ -9,16 +9,31 @@ import { SuggestedQuestions } from './SuggestedQuestions';
 const NOTIFY_YES = 'Yes, please notify me';
 const NOTIFY_OTHER = "Something else, I don't know";
 
+const composerIconBtn =
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border-soft text-ink-soft transition-colors hover:border-border hover:text-ink';
+
 interface FollowUpInputProps {
   /** Suggested / notify chips only when the transcript is scrolled to the bottom. */
   showPrompts?: boolean;
 }
 
 export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
-  const { attachedContext, pendingPrefill, consumePrefill, submitQuestion, turns } = useResearch();
+  const {
+    attachedContext,
+    pendingPrefill,
+    consumePrefill,
+    submitQuestion,
+    stopRun,
+    showToast,
+    turns,
+  } = useResearch();
   const [value, setValue] = useState('');
   const [notifyDismissedForTurn, setNotifyDismissedForTurn] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const activeRunTurn =
+    [...turns].reverse().find((t) => t.stage !== 'ready' && !t.stopped) ?? null;
+  const isGenerating = activeRunTurn != null;
 
   const showAttachSuggestions = showPrompts && turns.length === 0;
 
@@ -59,6 +74,15 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
     setValue('');
   }
 
+  function handleStop() {
+    if (!activeRunTurn) return;
+    stopRun(activeRunTurn.id);
+  }
+
+  function handleVoiceDictation() {
+    showToast('Voice dictation is coming soon.');
+  }
+
   return (
     <div className="bg-surface px-5 pb-3 pt-1">
       {/* <PinTriggerToggle /> */}
@@ -90,12 +114,22 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (isGenerating) return;
           handleSubmit();
         }}
         className="rounded-2xl border border-border-soft bg-composer px-3 py-2.5"
       >
         <ComposerContextStrip />
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleVoiceDictation}
+            title="Voice dictation (coming soon)"
+            aria-label="Voice dictation"
+            className={composerIconBtn}
+          >
+            <MicVocal size={16} strokeWidth={1.75} />
+          </button>
           <input
             ref={inputRef}
             value={value}
@@ -104,19 +138,31 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
               attachedContext.some(isAssumptionContext)
                 ? 'Clarify this assumption…'
                 : attachedContext.length === 0
-                  ? 'Ask about company performance…'
-                  : 'Ask a follow-up…'
+                  ? 'Explain this metric…'
+                  : 'Dig deeper…'
             }
             className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-sm text-ink placeholder:text-composer-placeholder focus:outline-none"
           />
-          <button
-            type="submit"
-            disabled={!value.trim()}
-            title="Send"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage text-white transition-opacity disabled:opacity-30"
-          >
-            <ArrowUp size={16} />
-          </button>
+          {isGenerating ? (
+            <button
+              type="button"
+              onClick={handleStop}
+              title="Stop response"
+              aria-label="Stop response"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-terracotta text-white transition-opacity hover:opacity-90"
+            >
+              <Square size={13} fill="currentColor" strokeWidth={0} />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!value.trim()}
+              title="Send"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage text-white transition-opacity disabled:opacity-30"
+            >
+              <ArrowUp size={16} />
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -119,7 +119,7 @@ export function AnswerSection({
         <FindingGroup
           heading="Assumptions"
           findings={assumptions}
-          defaultExpanded={false}
+          defaultExpanded={true}
           showMetricTags={showMetricTags}
           onReply={archived ? undefined : onReply}
         />

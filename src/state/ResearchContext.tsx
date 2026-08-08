@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useReducer, useRef, type ReactNode } from 'react';
 import type {
   AttachedContextItem,
   ContextId,
@@ -71,7 +71,8 @@ const ResearchContext = createContext<ResearchContextValue | null>(null);
 
 export function ResearchProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(researchReducer, initialSessionState);
-  const { runAnswerJob } = useAgentRun();
+  const { runAnswerJob, cancelRun } = useAgentRun();
+  const pendingTimeoutsRef = useRef<Map<string, number>>(new Map());
 
   const showToast = useCallback((message: string) => dispatch({ type: 'SHOW_TOAST', message }), []);
   const dismissToast = useCallback(() => dispatch({ type: 'DISMISS_TOAST' }), []);
@@ -103,7 +104,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       }
       dispatch({
         type: 'SHOW_TOAST',
-        message: `Added ${meta.title} (${opts.timeframeLabel}) to context.`,
+        message: `Added ${meta.title} (${opts.timeframeLabel}) to investigation scope.`,
       });
     },
     [],
@@ -224,9 +225,11 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         };
         dispatch({ type: 'CREATE_TURN', turn });
         // Brief loading beat before clarifying questions appear (demo-friendly pacing).
-        window.setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
+          pendingTimeoutsRef.current.delete(turnId);
           dispatch({ type: 'SET_TURN_STAGE', turnId, stage: 'ready' });
         }, 1800);
+        pendingTimeoutsRef.current.set(turnId, timeoutId);
         return;
       }
 
@@ -290,9 +293,15 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
 
   const stopRun = useCallback(
     (turnId: string, path?: string[]) => {
+      const timeoutId = pendingTimeoutsRef.current.get(turnId);
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId);
+        pendingTimeoutsRef.current.delete(turnId);
+      }
+      cancelRun();
       dispatch({ type: 'STOP_TURN', turnId, path });
     },
-    [],
+    [cancelRun],
   );
 
   const submitResponseFeedback = useCallback(
