@@ -14,7 +14,16 @@ import { ActiveClarifyingCard } from './ClarifyingQuestions';
 const BOTTOM_THRESHOLD_PX = 48;
 
 export function ChatPanel() {
-  const { turns, attachedContext, closePanel, startNewChat, answerClarifying } = useResearch();
+  const {
+    turns,
+    attachedContext,
+    chatHistory,
+    activeChatId,
+    closePanel,
+    startNewChat,
+    selectChat,
+    answerClarifying,
+  } = useResearch();
   const hasChartContext = attachedContext.some(isChartContext);
   const [exportOpen, setExportOpen] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
@@ -25,6 +34,21 @@ export function ChatPanel() {
     const firstQuestion = turns[0]?.question;
     return firstQuestion ? deriveChatTitle(firstQuestion) : 'Ask Sidekick';
   }, [turns]);
+
+  const chats = useMemo(() => {
+    const items =
+      turns.length > 0 && activeChatId
+        ? [{ id: activeChatId, title: chatTitle, isActive: true }]
+        : [];
+    return [
+      ...items,
+      ...chatHistory.map((chat) => ({
+        id: chat.id,
+        title: chat.title,
+        isActive: false,
+      })),
+    ];
+  }, [turns.length, activeChatId, chatTitle, chatHistory]);
   const priorTurns = turns.slice(0, -1);
   const latestTurn = turns[turns.length - 1] ?? null;
 
@@ -88,6 +112,8 @@ export function ChatPanel() {
         onNewChat={startNewChat}
         onShare={() => setExportOpen(true)}
         shareDisabled={!lastReadyTurn}
+        chats={chats}
+        onSelectChat={selectChat}
       />
 
       <div className="relative min-h-0 flex-1">
@@ -98,7 +124,7 @@ export function ChatPanel() {
         >
           {turns.length === 0 && !hasChartContext && <InvestigationEmptyState />}
           {turns.length > 0 && (
-            <div className="flex flex-col gap-4 pb-28">
+            <div className="flex flex-col gap-4 pb-12">
               {priorTurns.map((turn, index) => (
                 <CompactInvestigationStep key={turn.id} turn={turn} stepNumber={index + 1} />
               ))}

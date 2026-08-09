@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, useRef, type ReactNode } from 'react';
 import type {
   AttachedContextItem,
+  ChatHistoryEntry,
   ContextId,
   ConversationTurn,
   Finding,
@@ -47,6 +48,8 @@ interface ResearchContextValue {
   panelOpen: boolean;
   panelUnread: boolean;
   turns: ConversationTurn[];
+  chatHistory: ChatHistoryEntry[];
+  activeChatId: string | null;
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
@@ -61,6 +64,7 @@ interface ResearchContextValue {
   openPanel: () => void;
   closePanel: () => void;
   startNewChat: () => void;
+  selectChat: (chatId: string) => void;
   consumePrefill: () => void;
   submitQuestion: (
     question: string,
@@ -94,7 +98,21 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
 
   const openPanel = useCallback(() => dispatch({ type: 'SET_PANEL_OPEN', open: true }), []);
   const closePanel = useCallback(() => dispatch({ type: 'SET_PANEL_OPEN', open: false }), []);
-  const startNewChat = useCallback(() => dispatch({ type: 'CLEAR_CONVERSATION' }), []);
+  const startNewChat = useCallback(() => {
+    cancelRun();
+    pendingTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    pendingTimeoutsRef.current.clear();
+    dispatch({ type: 'START_NEW_CHAT' });
+  }, [cancelRun]);
+  const selectChat = useCallback(
+    (chatId: string) => {
+      cancelRun();
+      pendingTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      pendingTimeoutsRef.current.clear();
+      dispatch({ type: 'SELECT_CHAT', chatId });
+    },
+    [cancelRun],
+  );
   const consumePrefill = useCallback(() => dispatch({ type: 'SET_PENDING_PREFILL', text: null }), []);
   const setPinTrigger = useCallback(
     (pinTrigger: PinTrigger) => dispatch({ type: 'SET_PIN_TRIGGER', pinTrigger }),
@@ -502,6 +520,8 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       panelOpen: state.panelOpen,
       panelUnread: state.panelUnread,
       turns: state.turns,
+      chatHistory: state.chatHistory,
+      activeChatId: state.activeChatId,
       savedChecks: state.savedChecks,
       toast: state.toast,
       pendingPrefill: state.pendingPrefill,
@@ -513,6 +533,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       openPanel,
       closePanel,
       startNewChat,
+      selectChat,
       consumePrefill,
       submitQuestion,
       submitQuestionForMetric,
@@ -534,6 +555,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       openPanel,
       closePanel,
       startNewChat,
+      selectChat,
       consumePrefill,
       setPinTrigger,
       submitQuestion,

@@ -5,8 +5,6 @@ import { useResearch } from '../../state/ResearchContext';
 import { getAnswerHeadline, getPinExpandDetail } from '../../utils/answerPin';
 import { ThoughtTrace } from './ThoughtTrace';
 import { AnswerSection } from './AnswerSection';
-import { ClarifyingQuestions } from './ClarifyingQuestions';
-import { ClarifyingPrepLoader } from './ClarifyingPrepLoader';
 import { ComposerContextCard } from './ContextChip';
 import { PinnedInsight } from './PinnedInsight';
 
@@ -80,8 +78,7 @@ export function ConversationTurnCard({
   turn: ConversationTurn;
   isLatest: boolean;
 }) {
-  const { submitResponseFeedback, replyToAssumption, answerClarifying, pinTrigger, turns } =
-    useResearch();
+  const { submitResponseFeedback, replyToAssumption, pinTrigger, turns } = useResearch();
   const showMetricTags = turn.usedContextIds.length > 1;
   const notifyTopic = (
     turn.usedContextIds[0] ? getKpi(turn.usedContextIds[0]).title : 'Revenue'
@@ -99,9 +96,9 @@ export function ConversationTurnCard({
     !isNotifyFollowUp(turn.question);
   const clarifying = turn.clarifying;
   const isClarifying = turn.phase === 'clarifying' && !!clarifying;
-  const clarifyingLoading = isClarifying && turn.stage !== 'ready';
   const collapseToPin = pinTrigger === 'newTurn' && !isLatest && !!turn.answer && !turn.archived;
   const pinHeadline = turn.answer ? getAnswerHeadline(turn.answer) : null;
+  const showThoughtTrace = isClarifying || !!turn.answer;
 
   if (collapseToPin && pinHeadline && turn.answer) {
     return (
@@ -121,60 +118,49 @@ export function ConversationTurnCard({
     <div className="flex flex-col gap-3">
       <UserQuery turn={turn} />
 
-      {clarifyingLoading && <ClarifyingPrepLoader />}
-
-      {isClarifying && clarifying && !clarifyingLoading && (
-        <ClarifyingQuestions
+      {showThoughtTrace && (
+        <ThoughtTrace
+          stage={turn.stage}
+          answer={turn.answer}
+          stopped={turn.stopped}
           clarifying={clarifying}
-          onSelect={(optionId, customLabel) => answerClarifying(turn.id, optionId, customLabel)}
-          showActiveCard={false}
-        />
-      )}
-
-      {!isClarifying && clarifying && clarifying.responses.length > 0 && (
-        <ClarifyingQuestions
-          clarifying={{ ...clarifying, currentIndex: clarifying.questions.length }}
-          onSelect={() => {}}
-          showActiveCard={false}
+          phase={turn.phase}
         />
       )}
 
       {!isClarifying && turn.answer && (
-        <>
-          <ThoughtTrace stage={turn.stage} answer={turn.answer} stopped={turn.stopped} />
-          <AnswerSection
-            answer={turn.answer}
-            stage={turn.stage}
-            revealedFindingIds={turn.revealedFindingIds}
-            showMetricTags={showMetricTags}
-            responseFeedback={turn.responseFeedback}
-            archived={turn.archived}
-            onReply={(finding) => replyToAssumption(turn.id, finding)}
-            validatedAssumptionIds={turn.validatedAssumptionIds}
-            notifyTrace={turn.notifyTrace}
-            notifyConfirmed={turn.notifyConfirmed}
-            notifyTopic={showNotifyPrompt ? notifyTopic : undefined}
-            notifyRevised={showNotifyPrompt && turns.some((t) => t.archived)}
-            turn={turn}
-            showResponseActions={isLatest}
-            showAnswerFooter={isLatest}
-            onResponseThumbsUp={
-              isLatest
-                ? () => submitResponseFeedback(turn.id, { value: 'up' })
-                : undefined
-            }
-            onResponseThumbsDown={
-              isLatest
-                ? (reasons, comment) =>
-                    submitResponseFeedback(turn.id, {
-                      value: 'down',
-                      reasons,
-                      comment: comment || undefined,
-                    })
-                : undefined
-            }
-          />
-        </>
+        <AnswerSection
+          answer={turn.answer}
+          stage={turn.stage}
+          revealedFindingIds={turn.revealedFindingIds}
+          showMetricTags={showMetricTags}
+          responseFeedback={turn.responseFeedback}
+          archived={turn.archived}
+          onReply={(finding) => replyToAssumption(turn.id, finding)}
+          validatedAssumptionIds={turn.validatedAssumptionIds}
+          notifyTrace={turn.notifyTrace}
+          notifyConfirmed={turn.notifyConfirmed}
+          notifyTopic={showNotifyPrompt ? notifyTopic : undefined}
+          notifyRevised={showNotifyPrompt && turns.some((t) => t.archived)}
+          turn={turn}
+          showResponseActions={isLatest}
+          showAnswerFooter={isLatest}
+          onResponseThumbsUp={
+            isLatest
+              ? () => submitResponseFeedback(turn.id, { value: 'up' })
+              : undefined
+          }
+          onResponseThumbsDown={
+            isLatest
+              ? (reasons, comment) =>
+                  submitResponseFeedback(turn.id, {
+                    value: 'down',
+                    reasons,
+                    comment: comment || undefined,
+                  })
+              : undefined
+          }
+        />
       )}
     </div>
   );

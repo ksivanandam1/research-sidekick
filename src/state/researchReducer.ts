@@ -1,6 +1,7 @@
 import type {
   Answer,
   AttachedContextItem,
+  ChatHistoryEntry,
   ClarifyingResponse,
   ConversationTurn,
   DashboardAlert,
@@ -11,12 +12,17 @@ import type {
   SavedCheck,
   Stage,
 } from '../types';
+import { deriveChatTitle } from '../utils/chatTitle';
 
 export interface SessionState {
   attachedContext: AttachedContextItem[];
   panelOpen: boolean;
   panelUnread: boolean;
   turns: ConversationTurn[];
+  /** Prior chats from this session (excludes the active thread). */
+  chatHistory: ChatHistoryEntry[];
+  /** Id of the active chat thread once it has (or had) turns. */
+  activeChatId: string | null;
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
@@ -28,6 +34,8 @@ export const initialSessionState: SessionState = {
   panelOpen: false,
   panelUnread: false,
   turns: [],
+  chatHistory: [],
+  activeChatId: null,
   savedChecks: [],
   toast: null,
   pendingPrefill: null,
@@ -60,6 +68,8 @@ export type SessionAction =
   | { type: 'RECORD_CLARIFYING_RESPONSE'; turnId: string; response: ClarifyingResponse }
   | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer }
   | { type: 'CLEAR_CONVERSATION' }
+  | { type: 'START_NEW_CHAT' }
+  | { type: 'SELECT_CHAT'; chatId: string }
   | { type: 'SET_PIN_TRIGGER'; pinTrigger: PinTrigger }
   | { type: 'ARCHIVE_TURN'; turnId: string }
   | { type: 'MARK_ASSUMPTION_VALIDATED'; turnId: string; findingId: string }
@@ -102,6 +112,20 @@ function updateTurn(
 }
 
 let toastCounter = 0;
+let chatCounter = 0;
+
+function nextChatId(): string {
+  chatCounter += 1;
+  return `chat-${chatCounter}`;
+}
+
+function archiveActiveChat(state: SessionState): ChatHistoryEntry[] {
+  if (state.turns.length === 0) return state.chatHistory;
+  const id = state.activeChatId ?? nextChatId();
+  const title = deriveChatTitle(state.turns[0]!.question);
+  const entry: ChatHistoryEntry = { id, title, turns: state.turns };
+  return [entry, ...state.chatHistory.filter((chat) => chat.id !== id)];
+}
 
 export function researchReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
@@ -138,7 +162,12 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
       };
     }
     case 'CREATE_TURN': {
-      return { ...state, turns: [...state.turns, action.turn], attachedContext: [] };
+      return {
+        ...state,
+        turns: [...state.turns, action.turn],
+        attachedContext: [],
+        activeChatId: state.activeChatId ?? nextChatId(),
+      };
     }
     case 'SET_TURN_STAGE': {
       const next = updateTurn(state, action.turnId, (t) => {
@@ -249,7 +278,39 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
       }));
     }
     case 'CLEAR_CONVERSATION': {
-      return { ...state, turns: [], pendingPrefill: null, panelUnread: false };
+      return {
+        ...state,
+        turns: [],
+        activeChatId: null,
+        pendingPrefill: null,
+        panelUnread: false,
+      };
+    }
+    case 'START_NEW_CHAT': {
+      return {
+        ...state,
+        chatHistory: archiveActiveChat(state),
+        turns: [],
+        attachedContext: [],
+        activeChatId: null,
+        pendingPrefill: null,
+        panelUnread: false,
+      };
+    }
+    case 'SELECT_CHAT': {
+      if (state.activeChatId === action.chatId) return state;
+      const selected = state.chatHistory.find((chat) => chat.id === action.chatId);
+      if (!selected) return state;
+      const archived = archiveActiveChat(state);
+      return {
+        ...state,
+        chatHistory: archived.filter((chat) => chat.id !== selected.id),
+        turns: selected.turns,
+        attachedContext: [],
+        activeChatId: selected.id,
+        pendingPrefill: null,
+        panelUnread: false,
+      };
     }
     case 'SET_PIN_TRIGGER': {
       return { ...state, pinTrigger: action.pinTrigger };

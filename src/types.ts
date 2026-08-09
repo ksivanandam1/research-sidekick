@@ -280,3 +280,10 @@ export interface SavedCheck {
   createdAt: string;
   metricIds: MetricId[];
 }
+
+/** A prior or active chat thread within the current browser session. */
+export interface ChatHistoryEntry {
+  id: string;
+  title: string;
+  turns: ConversationTurn[];
+}

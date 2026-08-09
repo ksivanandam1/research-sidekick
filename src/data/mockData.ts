@@ -372,7 +372,7 @@ const PIPELINE_STEP_DEFS: Pick<PipelineThoughtStep, 'id' | 'label' | 'stage'>[] 
 ];
 
 const REVENUE_Q3_PIPELINE_DEFS: Pick<PipelineThoughtStep, 'id' | 'label' | 'stage'>[] = [
-  { id: 'clarifying', label: 'Running pre-diagnosis checks', stage: 'analysing' },
+  { id: 'clarifying', label: 'Clarifying assumptions', stage: 'analysing' },
   { id: 'retrieving', label: 'Pulling Q3 revenue and pipeline data', stage: 'retrieving' },
   { id: 'analysing', label: 'Isolating the dip by tier and channel', stage: 'citing' },
   { id: 'drafting', label: 'Drafting the Q3 revenue diagnosis', stage: 'drafting' },
@@ -455,13 +455,16 @@ function defaultAnalysingDetail(answer: Answer): string {
  * Pipeline thought trace for the side panel: short stage label plus concrete
  * detail subtext derived from the answer's proof points section when present.
  */
-export function buildPipelineThoughtSteps(answer: Answer): PipelineThoughtStep[] {
+export function buildPipelineThoughtSteps(
+  answer: Answer,
+  options?: { hasClarifyingRound?: boolean },
+): PipelineThoughtStep[] {
   if (answer.thoughtSteps?.length) {
     return answer.thoughtSteps;
   }
 
   const howSteps = extractHowIGotHere(answer.summary);
-  const isRevenueQ3 = isRevenueQ3Diagnosis(answer);
+  const isRevenueQ3 = isRevenueQ3Diagnosis(answer) || !!options?.hasClarifyingRound;
   const defs = isRevenueQ3 ? REVENUE_Q3_PIPELINE_DEFS : PIPELINE_STEP_DEFS;
 
   const clarifyingDetail = isRevenueQ3
@@ -759,17 +762,17 @@ export const REVENUE_DIP_ANSWER: Answer = {
     '---',
     '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
     'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
+    '### Validation needed',
+    "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
+    '### Proof points and evidence',
+    '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%) — the gap suggested partial seasonality, so I kept digging.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].',
+    'We were able to diagnose the segment based on your tier and channel data.',
     '### Unknowns',
     [
       '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting** — volume is visible, but not the activity behind it',
       '- Pipeline stage conversion for outbound-sourced Pro (activity data not accessible)',
       '- Whether competitor pressure, messaging, or territory coverage contributed to the miss',
     ].join('\n'),
-    '### Validation needed',
-    "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
-    '### Proof points and evidence',
-    '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%) — the gap suggested partial seasonality, so I kept digging.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].',
-    'We were able to diagnose the segment based on your tier and channel data.',
   ].join('\n\n'),
   pinSummary:
     'Q3 missed forecast by 12%, but the drop is outbound Pro — not a broad decline across tiers.',
@@ -1089,17 +1092,17 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
       '---',
       '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
       'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
+      '### Validation needed',
+      "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
+      '### Proof points and evidence',
+      "1. I compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].",
+      'We were able to diagnose the segment based on your tier and channel data.',
       '### Unknowns',
       [
         '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting** — volume is visible, but not the activity behind it',
         '- Pipeline stage conversion for outbound-sourced Pro (activity data not accessible)',
         '- Whether competitor pressure, messaging, or territory coverage contributed to the miss',
       ].join('\n'),
-      '### Validation needed',
-      "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
-      '### Proof points and evidence',
-      "1. I compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].",
-      'We were able to diagnose the segment based on your tier and channel data.',
     ].join('\n\n'),
     pinSummary:
       'Seasonality ruled out — Q3 miss is outbound Pro, not a cyclical dip.',

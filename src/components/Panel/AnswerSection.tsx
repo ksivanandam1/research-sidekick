@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Copy, RotateCcw, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react';
-import type { Answer, ConversationTurn, Finding, NotifyTrace, ResponseFeedback, ResponseFeedbackReason, Stage } from '../../types';
+import type {
+  Answer,
+  ConversationTurn,
+  Finding,
+  NotifyTrace,
+  ResponseFeedback,
+  ResponseFeedbackReason,
+  Stage,
+} from '../../types';
 import { useResearch } from '../../state/ResearchContext';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { ConfidenceBadge } from './ConfidenceBadge';
@@ -12,7 +20,7 @@ import { DashboardAlertCard } from './DashboardAlertCard';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ResponseFeedbackModal } from './ResponseFeedbackModal';
 import { ThoughtTrace } from './ThoughtTrace';
-import { splitValidationFromSummary } from '../../utils/summarySections';
+import { splitUnknownsFromSummary, splitValidationFromSummary } from '../../utils/summarySections';
 
 interface AnswerSectionProps {
   answer: Answer;
@@ -178,7 +186,10 @@ export function AnswerSection({
   const { showToast, submitQuestion } = useResearch();
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const { summaryBody, validationNeeded } = splitValidationFromSummary(answer.summary);
+  const { summaryBody: withoutValidation, validationNeeded } = splitValidationFromSummary(
+    answer.summary,
+  );
+  const { summaryBody } = splitUnknownsFromSummary(withoutValidation);
   const summaryActive = stage === 'drafting';
   const summaryText = useTypewriter(summaryBody, summaryActive);
   const summaryVisible = stage === 'drafting' || stage === 'linking' || stage === 'ready';
@@ -268,7 +279,7 @@ export function AnswerSection({
 
       {showBelowSummary && assumptions.length > 0 && (
         <FindingGroup
-          heading="Assumptions"
+          heading="Requires clarification"
           findings={assumptions}
           defaultExpanded={true}
           showMetricTags={showMetricTags}
