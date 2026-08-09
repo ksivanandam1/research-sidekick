@@ -102,7 +102,7 @@ export function ComposerContextCard({
           {title}
         </p>
         <p
-          className={`truncate leading-tight text-composer-placeholder ${
+          className={`truncate leading-tight text-ink-soft ${
             compact ? 'text-[10px]' : 'text-xs'
           }`}
         >

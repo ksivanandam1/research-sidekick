@@ -9,9 +9,15 @@ interface FindingItemProps {
   finding: Finding;
   showMetricTag: boolean;
   onReply?: () => void;
+  assumptionAddressed?: boolean;
 }
 
-export function FindingItem({ finding, showMetricTag, onReply }: FindingItemProps) {
+export function FindingItem({
+  finding,
+  showMetricTag,
+  onReply,
+  assumptionAddressed = false,
+}: FindingItemProps) {
   const [openSourceIds, setOpenSourceIds] = useState<string[]>([]);
 
   function toggleSource(id: string) {
@@ -49,27 +55,26 @@ export function FindingItem({ finding, showMetricTag, onReply }: FindingItemProp
         </div>
       )}
 
-      <div className="mt-2.5 flex items-center justify-between gap-2">
-        <div>
-          {finding.revised && finding.revisedNote && (
-            <p className="inline-flex items-center gap-1 text-[11px] font-medium text-sage">
-              <RefreshCcw size={11} />
-              {finding.revisedNote}
-            </p>
-          )}
-        </div>
+      {finding.revised && finding.revisedNote && (
+        <p className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-medium text-sage">
+          <RefreshCcw size={11} />
+          {finding.revisedNote}
+        </p>
+      )}
 
-        {finding.kind === 'assumption' && onReply && (
+      {finding.kind === 'assumption' && onReply && (
+        <div className="mt-2.5 flex justify-end">
           <button
             type="button"
             onClick={onReply}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-soft bg-ink px-2.5 py-1 text-[11px] font-medium text-surface transition-colors hover:bg-ink/90"
+            disabled={assumptionAddressed}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-soft bg-ink px-2.5 py-1 text-[11px] font-medium text-surface transition-colors hover:bg-ink/90 disabled:cursor-default disabled:opacity-40"
           >
             <MessageSquareReply size={11} />
             Reply
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

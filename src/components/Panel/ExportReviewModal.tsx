@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ShieldAlert, X } from 'lucide-react';
 import type { ConversationTurn } from '../../types';
+import { isChartContext } from '../../types';
 import { getSource } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 import { buildExportDraft } from '../../utils/exportDraft';
+import { ComposerContextCard } from './ContextChip';
 
 interface ExportReviewModalProps {
   turn: ConversationTurn;
@@ -20,6 +22,7 @@ export function ExportReviewModal({ turn, onClose }: ExportReviewModalProps) {
   }, [turn]);
 
   const hasRestricted = turn.answer?.findings.some((f) => f.sourceIds.some((id) => getSource(id).restricted));
+  const chartContext = (turn.contextItems ?? []).filter(isChartContext);
 
   async function handleApprove() {
     try {
@@ -45,8 +48,22 @@ export function ExportReviewModal({ turn, onClose }: ExportReviewModalProps) {
           initial={{ opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
-          className="w-full max-w-lg rounded-2xl border border-border bg-surface p-5 shadow-soft-lg"
+          className="flex w-full max-w-lg flex-col items-end gap-2"
         >
+          {chartContext.length > 0 && (
+            <div className="flex max-w-full flex-wrap justify-end gap-2">
+              {chartContext.map((item) => (
+                <ComposerContextCard
+                  key={item.instanceId}
+                  title={item.title}
+                  timeframeLabel={item.timeframeLabel}
+                  chartKind={item.chartKind}
+                  compact
+                />
+              ))}
+            </div>
+          )}
+          <div className="w-full rounded-2xl border border-border bg-surface p-5 shadow-soft-lg">
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-ink">Review before sharing</p>
@@ -88,8 +105,9 @@ export function ExportReviewModal({ turn, onClose }: ExportReviewModalProps) {
               className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-surface transition-opacity hover:opacity-90"
             >
               <Check size={13} />
-              Approve &amp; Copy
+              Export
             </button>
+          </div>
           </div>
         </motion.div>
       </motion.div>
