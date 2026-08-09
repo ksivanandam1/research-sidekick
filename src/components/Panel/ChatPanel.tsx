@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Compass } from 'lucide-react';
-import type { MetricId } from '../../types';
-import { KPI_DEFINITIONS } from '../../data/mockData';
-import { DEFAULT_TIMEFRAME, formatTimeframeLabel } from '../../data/dashboardFilters';
+import { ChevronDown } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 import { deriveInvestigationHeader } from '../../utils/panelHeader';
 import { deriveInvestigationSteps } from '../../utils/investigationSteps';
@@ -10,67 +7,12 @@ import { PanelHeader } from './PanelHeader';
 import { ConversationTurnCard } from './ConversationTurnCard';
 import { CompactInvestigationStep } from './CompactInvestigationStep';
 import { InvestigationTrail } from './InvestigationTrail';
+import { InvestigationEmptyState } from './InvestigationEmptyState';
 import { FollowUpInput } from './FollowUpInput';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ActiveClarifyingCard } from './ClarifyingQuestions';
 
 const BOTTOM_THRESHOLD_PX = 48;
-const DEFAULT_TIMEFRAME_LABEL = formatTimeframeLabel(DEFAULT_TIMEFRAME);
-
-const ANOMALY_SHORTCUTS = KPI_DEFINITIONS.filter(
-  (kpi): kpi is typeof kpi & { anomaly: NonNullable<(typeof kpi)['anomaly']> } => !!kpi.anomaly,
-);
-
-function InvestigationEmptyState() {
-  const { addContext } = useResearch();
-
-  function investigateAnomaly(metricId: MetricId, question: string) {
-    addContext(metricId, { timeframeLabel: DEFAULT_TIMEFRAME_LABEL, prefill: question });
-  }
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-8 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ocean-soft text-ocean">
-        <Compass size={18} strokeWidth={2} />
-      </div>
-      <div className="flex max-w-xs flex-col gap-1.5">
-        <p className="text-sm font-medium text-ink">Select a chart to investigate</p>
-        <p className="text-xs leading-relaxed text-ink-faint">
-          Click <span className="font-medium text-ink-soft">+</span> on any metric in the dashboard,
-          or start from a flagged anomaly below.
-        </p>
-      </div>
-
-      <ol className="flex max-w-xs flex-col gap-1 text-left text-[11px] leading-relaxed text-ink-faint">
-        <li>1. Attach the charts you want in scope</li>
-        <li>2. Explain what you need to understand</li>
-        <li>3. Verify evidence, then review & share</li>
-      </ol>
-
-      {ANOMALY_SHORTCUTS.length > 0 && (
-        <div className="flex w-full max-w-xs flex-col gap-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
-            Flagged on dashboard
-          </p>
-          {ANOMALY_SHORTCUTS.map((kpi) => (
-            <button
-              key={kpi.id}
-              type="button"
-              onClick={() => investigateAnomaly(kpi.id, kpi.anomaly.suggestedQuestion)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-border-soft bg-surface px-3 py-2.5 text-left shadow-soft transition-colors hover:border-border hover:bg-surface-soft"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-medium text-ink">{kpi.title}</span>
-                <span className="block truncate text-[11px] text-ink-faint">{kpi.anomaly.label}</span>
-              </span>
-              <span className="shrink-0 text-[11px] font-medium text-sage">Investigate</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function offsetWithin(el: HTMLElement, ancestor: HTMLElement): number {
   return (
