@@ -72,7 +72,8 @@ export function useAgentRun() {
       args;
     const cancelled = () => cancelledRef.current;
 
-    void ensureNotificationPermission();
+    // Await so Allow/Deny settles before stages run (avoids ready racing the prompt).
+    await ensureNotificationPermission();
 
     onStage('analysing');
     await sleep(STAGE_DELAY_MS.analysing);

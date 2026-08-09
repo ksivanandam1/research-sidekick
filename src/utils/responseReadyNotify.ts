@@ -115,10 +115,14 @@ export function clearResponseReadyIndicators(): void {
 }
 
 export function notifyResponseReady(args: { body: string }): void {
-  if (typeof document === 'undefined' || !document.hidden) return;
+  if (typeof document === 'undefined') return;
 
   bindVisibilityClear();
-  setFaviconBadge();
+
+  // Blue tab dot only when the user is elsewhere; OS notification always fires.
+  if (document.hidden) {
+    setFaviconBadge();
+  }
 
   if (!notificationsSupported() || Notification.permission !== 'granted') return;
 
