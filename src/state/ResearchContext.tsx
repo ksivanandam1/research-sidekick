@@ -117,7 +117,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       }
       dispatch({
         type: 'SHOW_TOAST',
-        message: `Added ${meta.title} (${opts.timeframeLabel}) to investigation scope.`,
+        message: 'Chart added to chat',
       });
     },
     [],
