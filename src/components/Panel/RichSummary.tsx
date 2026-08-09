@@ -25,6 +25,16 @@ function renderInline(text: string, citations: Finding[]): ReactNode[] {
   });
 }
 
+export function SummaryInline({
+  text,
+  citations = [],
+}: {
+  text: string;
+  citations?: Finding[];
+}) {
+  return <>{renderInline(text, citations)}</>;
+}
+
 function renderBlock(block: string, key: number, citations: Finding[]) {
   const trimmed = block.trim();
   if (!trimmed) return null;

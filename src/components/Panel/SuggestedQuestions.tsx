@@ -24,7 +24,7 @@ export function SuggestedQuestions({ onSelect }: SuggestedQuestionsProps) {
           key={q}
           type="button"
           onClick={() => onSelect(q)}
-          className="prompt-rise inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-3 py-1.5 text-left text-sm font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+          className="prompt-rise inline-flex max-w-full items-center rounded-lg border border-border-soft bg-surface px-3 py-1.5 text-left text-sm font-medium text-ink-soft transition-colors hover:border-border hover:text-ink"
         >
           <span className="truncate">{q}</span>
         </button>

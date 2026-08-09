@@ -1,75 +1,39 @@
-import { Share2, SquarePen, X } from 'lucide-react';
-import type { ChartAttachedContextItem } from '../../types';
-import type { InvestigationStatusTone } from '../../utils/panelHeader';
-import { ComposerContextCard } from './ContextChip';
+import { ChevronDown, Menu, Share2, SquarePen, X } from 'lucide-react';
 
 interface PanelHeaderProps {
-  subject: string;
-  scopeItems: ChartAttachedContextItem[];
-  statusLabel: string;
-  statusTone: InvestigationStatusTone;
+  title: string;
   onClose: () => void;
   onShare: () => void;
-  onStartOver: () => void;
+  onNewChat: () => void;
   shareDisabled: boolean;
 }
 
 const iconBtn =
   'flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink';
 
-const STATUS_STYLES: Record<InvestigationStatusTone, string> = {
-  neutral: 'bg-surface-soft text-ink-faint border-border-soft',
-  active: 'bg-ocean-soft/70 text-ocean border-ocean/20',
-  ready: 'bg-sage-soft text-sage border-sage/25',
-  stopped: 'bg-terracotta-soft text-terracotta border-terracotta/25',
-  clarifying: 'bg-amber-soft text-amber border-amber/25',
-};
-
-export function PanelHeader({
-  subject,
-  scopeItems,
-  statusLabel,
-  statusTone,
-  onClose,
-  onShare,
-  onStartOver,
-  shareDisabled,
-}: PanelHeaderProps) {
+export function PanelHeader({ title, onClose, onShare, onNewChat, shareDisabled }: PanelHeaderProps) {
   return (
-    <div className="border-b border-border px-4 py-3">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-snug text-ink">{subject}</p>
+    <div className="border-b border-border px-3 py-2.5">
+      <div className="flex items-center gap-1">
+        <button type="button" title="Menu" aria-label="Menu" className={iconBtn}>
+          <Menu size={18} strokeWidth={1.75} />
+        </button>
 
-          {scopeItems.length > 0 && (
-            <div className="-mx-0.5 mt-2 overflow-x-auto pb-0.5">
-              <div className="flex w-max min-w-full gap-1.5 px-0.5">
-                {scopeItems.map((item) => (
-                  <ComposerContextCard
-                    key={item.instanceId}
-                    title={item.title}
-                    timeframeLabel={item.timeframeLabel}
-                    chartKind={item.chartKind}
-                    compact
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        <button
+          type="button"
+          title={title}
+          className="inline-flex min-w-0 max-w-[min(100%,14rem)] items-center gap-1 rounded-lg px-1.5 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-surface-soft"
+        >
+          <span className="truncate">{title}</span>
+          <ChevronDown size={14} strokeWidth={2} className="shrink-0 text-ink-faint" />
+        </button>
 
-          <span
-            className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLES[statusTone]}`}
-          >
-            {statusLabel}
-          </span>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
-            onClick={onStartOver}
-            title="Start over"
-            aria-label="Start over"
+            onClick={onNewChat}
+            title="New chat"
+            aria-label="New chat"
             className={iconBtn}
           >
             <SquarePen size={16} strokeWidth={1.75} />
@@ -79,7 +43,7 @@ export function PanelHeader({
             onClick={onShare}
             disabled={shareDisabled}
             title="Review & share"
-            aria-label="Review and share"
+            aria-label="Share"
             className={`${iconBtn} disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft`}
           >
             <Share2 size={16} strokeWidth={1.75} />
@@ -87,8 +51,8 @@ export function PanelHeader({
           <button
             type="button"
             onClick={onClose}
-            title="Close inspector"
-            aria-label="Close inspector"
+            title="Close panel"
+            aria-label="Close panel"
             className={iconBtn}
           >
             <X size={16} strokeWidth={1.75} />

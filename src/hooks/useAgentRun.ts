@@ -34,6 +34,15 @@ export interface RunRevisionJobArgs {
   onDone: () => void;
 }
 
+export interface RunAssumptionValidationJobArgs {
+  onStage: (stage: Stage) => void;
+}
+
+const ASSUMPTION_VALIDATION_STAGE_DELAY_MS: Partial<Record<Stage, number>> = {
+  analysing: 1400,
+  linking: 1000,
+};
+
 /**
  * Simulates a mocked agent working through visible stages:
  * analysing -> retrieving -> citing (sources appear) -> drafting (prose + remaining
@@ -99,9 +108,25 @@ export function useAgentRun() {
     onDone();
   }, []);
 
+  const runAssumptionValidationJob = useCallback(async (args: RunAssumptionValidationJobArgs) => {
+    cancelledRef.current = false;
+    const { onStage } = args;
+    const cancelled = () => cancelledRef.current;
+
+    onStage('analysing');
+    await sleep(ASSUMPTION_VALIDATION_STAGE_DELAY_MS.analysing ?? 1400);
+    if (cancelled()) return;
+
+    onStage('linking');
+    await sleep(ASSUMPTION_VALIDATION_STAGE_DELAY_MS.linking ?? 1000);
+    if (cancelled()) return;
+
+    onStage('ready');
+  }, []);
+
   const cancelRun = useCallback(() => {
     cancelledRef.current = true;
   }, []);
 
-  return { runAnswerJob, runRevisionJob, cancelRun };
+  return { runAnswerJob, runRevisionJob, runAssumptionValidationJob, cancelRun };
 }

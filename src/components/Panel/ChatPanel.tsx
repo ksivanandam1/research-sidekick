@@ -1,39 +1,44 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
-import { deriveInvestigationHeader } from '../../utils/panelHeader';
-import { deriveInvestigationSteps } from '../../utils/investigationSteps';
+import { deriveChatTitle } from '../../utils/chatTitle';
 import { PanelHeader } from './PanelHeader';
 import { ConversationTurnCard } from './ConversationTurnCard';
 import { CompactInvestigationStep } from './CompactInvestigationStep';
-import { InvestigationTrail } from './InvestigationTrail';
-import { InvestigationEmptyState } from './InvestigationEmptyState';
 import { FollowUpInput } from './FollowUpInput';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ActiveClarifyingCard } from './ClarifyingQuestions';
 
 const BOTTOM_THRESHOLD_PX = 48;
 
-function offsetWithin(el: HTMLElement, ancestor: HTMLElement): number {
+function InvestigationEmptyState() {
   return (
-    el.getBoundingClientRect().top - ancestor.getBoundingClientRect().top + ancestor.scrollTop
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-8 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ocean-soft text-ocean">
+        <Compass size={18} strokeWidth={2} />
+      </div>
+      <div className="flex max-w-xs flex-col gap-1.5">
+        <p className="text-sm font-medium text-ink">Select a chart to investigate</p>
+        <p className="text-xs leading-relaxed text-ink-faint">
+          Click <span className="font-medium text-ink-soft">+</span> on any metric in the dashboard to
+          get started.
+        </p>
+      </div>
+    </div>
   );
 }
 
 export function ChatPanel() {
-  const { turns, attachedContext, closePanel, startNewChat, answerClarifying } = useResearch();
+  const { turns, closePanel, startNewChat, answerClarifying } = useResearch();
   const [exportOpen, setExportOpen] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const spacerRef = useRef<HTMLDivElement>(null);
   const lastScrolledTurnId = useRef<string | null>(null);
 
-  const headerState = useMemo(
-    () => deriveInvestigationHeader(turns, attachedContext),
-    [turns, attachedContext],
-  );
-
-  const investigationSteps = useMemo(() => deriveInvestigationSteps(turns), [turns]);
+  const chatTitle = useMemo(() => {
+    const firstQuestion = turns[0]?.question;
+    return firstQuestion ? deriveChatTitle(firstQuestion) : 'Ask Sidekick';
+  }, [turns]);
   const priorTurns = turns.slice(0, -1);
   const latestTurn = turns[turns.length - 1] ?? null;
 
@@ -65,18 +70,15 @@ export function ChatPanel() {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, []);
 
-  const pinUserQueryToTop = useCallback(
+  const scrollLatestQueryIntoView = useCallback(
     (turnId: string, behavior: ScrollBehavior) => {
       const root = scrollRef.current;
-      const spacer = spacerRef.current;
-      if (!root || !spacer) return;
+      if (!root) return;
 
       const target = root.querySelector(`[data-user-query="${turnId}"]`);
       if (!(target instanceof HTMLElement)) return;
 
-      spacer.style.height = `${Math.max(0, root.clientHeight - target.offsetHeight)}px`;
-      const top = Math.max(0, offsetWithin(target, root));
-      root.scrollTo({ top, behavior });
+      target.scrollIntoView({ behavior, block: 'start' });
       updateAtBottom();
     },
     [updateAtBottom],
@@ -85,8 +87,8 @@ export function ChatPanel() {
   useLayoutEffect(() => {
     if (!latestTurnId || latestTurnId === lastScrolledTurnId.current) return;
     lastScrolledTurnId.current = latestTurnId;
-    pinUserQueryToTop(latestTurnId, 'auto');
-  }, [latestTurnId, pinUserQueryToTop]);
+    scrollLatestQueryIntoView(latestTurnId, 'auto');
+  }, [latestTurnId, scrollLatestQueryIntoView]);
 
   useEffect(() => {
     updateAtBottom();
@@ -95,12 +97,9 @@ export function ChatPanel() {
   return (
     <div className="flex h-full flex-col">
       <PanelHeader
-        subject={headerState.subject}
-        scopeItems={headerState.scopeItems}
-        statusLabel={headerState.statusLabel}
-        statusTone={headerState.statusTone}
+        title={chatTitle}
         onClose={closePanel}
-        onStartOver={startNewChat}
+        onNewChat={startNewChat}
         onShare={() => setExportOpen(true)}
         shareDisabled={!lastReadyTurn}
       />
@@ -114,8 +113,7 @@ export function ChatPanel() {
           {turns.length === 0 ? (
             <InvestigationEmptyState />
           ) : (
-            <div className="flex flex-col gap-4">
-              <InvestigationTrail steps={investigationSteps} />
+            <div className="flex flex-col gap-4 pb-28">
               {priorTurns.map((turn, index) => (
                 <CompactInvestigationStep key={turn.id} turn={turn} stepNumber={index + 1} />
               ))}
@@ -124,10 +122,8 @@ export function ChatPanel() {
                   key={latestTurn.id}
                   turn={latestTurn}
                   isLatest
-                  onReviewShare={() => setExportOpen(true)}
                 />
               )}
-              <div ref={spacerRef} aria-hidden className="shrink-0" />
             </div>
           )}
         </div>

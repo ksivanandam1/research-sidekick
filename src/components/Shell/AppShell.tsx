@@ -12,7 +12,7 @@ interface AppShellProps {
 const PANEL_WIDTH = 440;
 
 export function AppShell({ children, panel, panelOpen }: AppShellProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-canvas">
