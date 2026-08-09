@@ -8,7 +8,12 @@ let activeNotification: Notification | null = null;
 let visibilityBound = false;
 
 export function truncateNotificationBody(text: string, maxLen = DEFAULT_BODY_MAX): string {
-  const normalized = text.replace(/\s+/g, ' ').trim();
+  const normalized = text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (normalized.length <= maxLen) return normalized;
   return `${normalized.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`;
 }
