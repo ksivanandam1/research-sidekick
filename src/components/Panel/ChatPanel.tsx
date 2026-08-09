@@ -1,32 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Compass } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 import { deriveChatTitle } from '../../utils/chatTitle';
 import { PanelHeader } from './PanelHeader';
 import { ConversationTurnCard } from './ConversationTurnCard';
 import { CompactInvestigationStep } from './CompactInvestigationStep';
+import { InvestigationEmptyState } from './InvestigationEmptyState';
 import { FollowUpInput } from './FollowUpInput';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ActiveClarifyingCard } from './ClarifyingQuestions';
 
 const BOTTOM_THRESHOLD_PX = 48;
-
-function InvestigationEmptyState() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-8 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ocean-soft text-ocean">
-        <Compass size={18} strokeWidth={2} />
-      </div>
-      <div className="flex max-w-xs flex-col gap-1.5">
-        <p className="text-sm font-medium text-ink">Select a chart to investigate</p>
-        <p className="text-xs leading-relaxed text-ink-faint">
-          Click <span className="font-medium text-ink-soft">+</span> on any metric in the dashboard to
-          get started.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export function ChatPanel() {
   const { turns, closePanel, startNewChat, answerClarifying } = useResearch();
