@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { Stage } from '../types';
+import {
+  ensureNotificationPermission,
+  notifyResponseReady,
+} from '../utils/responseReadyNotify';
 import { playResponseReadySound } from '../utils/responseReadySound';
 
 /** Deliberately slow so demos can read each thinking title. */
@@ -25,6 +29,7 @@ function sleep(ms: number): Promise<void> {
 export interface RunAnswerJobArgs {
   evidenceFindingIds: string[];
   otherFindingIds: string[];
+  responseBody: string;
   onStage: (stage: Stage) => void;
   onFindingsRevealed: (findingIds: string[]) => void;
 }
@@ -63,8 +68,12 @@ export function useAgentRun() {
 
   const runAnswerJob = useCallback(async (args: RunAnswerJobArgs) => {
     cancelledRef.current = false;
-    const { evidenceFindingIds, otherFindingIds, onStage, onFindingsRevealed } = args;
+    const { evidenceFindingIds, otherFindingIds, responseBody, onStage, onFindingsRevealed } =
+      args;
     const cancelled = () => cancelledRef.current;
+
+    // Await so Allow/Deny settles before stages run (avoids ready racing the prompt).
+    await ensureNotificationPermission();
 
     onStage('analysing');
     await sleep(STAGE_DELAY_MS.analysing);
@@ -97,6 +106,7 @@ export function useAgentRun() {
 
     onStage('ready');
     playResponseReadySound();
+    notifyResponseReady({ body: responseBody });
   }, []);
 
   const runRevisionJob = useCallback(async (args: RunRevisionJobArgs) => {

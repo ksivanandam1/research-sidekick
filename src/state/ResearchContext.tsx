@@ -155,6 +155,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       runAnswerJob({
         evidenceFindingIds: evidenceIds,
         otherFindingIds: otherIds,
+        responseBody: answer.summary,
         onStage: (stage) => dispatch({ type: 'SET_TURN_STAGE', turnId, stage }),
         onFindingsRevealed: (ids) => dispatch({ type: 'REVEAL_FINDINGS', turnId, findingIds: ids }),
       });
