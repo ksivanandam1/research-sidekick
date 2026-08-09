@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp, MicVocal, Square } from 'lucide-react';
+import { ArrowUp, Mic, Square } from 'lucide-react';
+import { ComposerQuickActionsMenu } from '../ComposerQuickActionsMenu';
+import { isNotifyFollowUp } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 import { isAssumptionContext } from '../../types';
 import { ComposerContextStrip } from './ContextTray';
 import { SuggestedQuestions } from './SuggestedQuestions';
 // import { PinTriggerToggle } from './PinTriggerToggle'; // hidden for now — restore when needed
 
-const NOTIFY_YES = 'Yes, please notify me';
-const NOTIFY_OTHER = "Something else, I don't know";
+const NOTIFY_YES = 'Yes, please set a notification.';
+const NOTIFY_MAYA = 'What questions should I ask Maya about?';
+
+const promptBtnClass =
+  'prompt-rise inline-flex max-w-full items-center rounded-lg border border-border-soft bg-surface px-3 py-1.5 text-left text-sm font-medium text-ink-soft transition-colors hover:border-border hover:text-ink';
 
 const composerIconBtn =
   'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border-soft text-ink-soft transition-colors hover:border-border hover:text-ink';
@@ -37,19 +42,27 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
 
   const showAttachSuggestions = showPrompts && turns.length === 0;
 
-  const firstAnswerTurn = turns.find(
-    (t) =>
-      t.stage === 'ready' &&
-      !!t.answer &&
-      !t.archived &&
-      t.phase !== 'clarifying' &&
-      t.activePath.length === 0,
-  );
+  const notifyTargetTurn = [...turns]
+    .reverse()
+    .find(
+      (t) =>
+        t.stage === 'ready' &&
+        !!t.answer &&
+        !t.archived &&
+        t.phase !== 'clarifying' &&
+        t.activePath.length === 0 &&
+        !t.answer.generatedDocument &&
+        !t.answer.dashboardAlert &&
+        !t.notifyConfirmed &&
+        !t.notifyTrace &&
+        !isNotifyFollowUp(t.question),
+    );
+  const latestTurn = turns[turns.length - 1] ?? null;
   const showNotifyPrompts =
     showPrompts &&
-    !!firstAnswerTurn &&
-    turns.length === 1 &&
-    notifyDismissedForTurn !== firstAnswerTurn.id;
+    !!notifyTargetTurn &&
+    notifyTargetTurn.id === latestTurn?.id &&
+    notifyDismissedForTurn !== notifyTargetTurn.id;
 
   useEffect(() => {
     if (pendingPrefill) {
@@ -67,8 +80,8 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
   function handleSubmit(question?: string) {
     const text = question ?? value;
     if (!text.trim()) return;
-    if (firstAnswerTurn && (text === NOTIFY_YES || text === NOTIFY_OTHER)) {
-      setNotifyDismissedForTurn(firstAnswerTurn.id);
+    if (notifyTargetTurn && (text === NOTIFY_YES || text === NOTIFY_MAYA)) {
+      setNotifyDismissedForTurn(notifyTargetTurn.id);
     }
     submitQuestion(text);
     setValue('');
@@ -97,16 +110,16 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
           <button
             type="button"
             onClick={() => handleSubmit(NOTIFY_YES)}
-            className="prompt-rise inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+            className={promptBtnClass}
           >
-            {NOTIFY_YES}
+            <span className="truncate">{NOTIFY_YES}</span>
           </button>
           <button
             type="button"
-            onClick={() => handleSubmit(NOTIFY_OTHER)}
-            className="prompt-rise inline-flex max-w-full items-center rounded-full border border-border-soft bg-surface px-2.5 py-1 text-left text-[11px] font-medium text-ink-soft shadow-soft transition-colors hover:border-border hover:text-ink"
+            onClick={() => handleSubmit(NOTIFY_MAYA)}
+            className={promptBtnClass}
           >
-            {NOTIFY_OTHER}
+            <span className="truncate">{NOTIFY_MAYA}</span>
           </button>
         </div>
       )}
@@ -121,15 +134,10 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
       >
         <ComposerContextStrip />
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleVoiceDictation}
-            title="Voice dictation (coming soon)"
-            aria-label="Voice dictation"
-            className={composerIconBtn}
-          >
-            <MicVocal size={16} strokeWidth={1.75} />
-          </button>
+          <ComposerQuickActionsMenu
+            onSelect={(question) => handleSubmit(question)}
+            disabled={isGenerating}
+          />
           <input
             ref={inputRef}
             value={value}
@@ -138,18 +146,27 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
               attachedContext.some(isAssumptionContext)
                 ? 'Clarify this assumption…'
                 : attachedContext.length === 0
-                  ? 'Explain this metric…'
+                  ? 'Ask a question about this dashboard'
                   : 'Dig deeper…'
             }
             className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-sm text-ink placeholder:text-composer-placeholder focus:outline-none"
           />
+          <button
+            type="button"
+            onClick={handleVoiceDictation}
+            title="Voice dictation (coming soon)"
+            aria-label="Voice dictation"
+            className={composerIconBtn}
+          >
+            <Mic size={16} strokeWidth={1.75} />
+          </button>
           {isGenerating ? (
             <button
               type="button"
               onClick={handleStop}
               title="Stop response"
               aria-label="Stop response"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-terracotta text-white transition-opacity hover:opacity-90"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-white transition-opacity hover:opacity-90"
             >
               <Square size={13} fill="currentColor" strokeWidth={0} />
             </button>

@@ -3,8 +3,10 @@ import type {
   AttachedContextItem,
   ClarifyingResponse,
   ConversationTurn,
+  DashboardAlert,
   DrillDown,
   PinTrigger,
+  PipelineThoughtStep,
   ResponseFeedback,
   SavedCheck,
   Stage,
@@ -13,6 +15,7 @@ import type {
 export interface SessionState {
   attachedContext: AttachedContextItem[];
   panelOpen: boolean;
+  panelUnread: boolean;
   turns: ConversationTurn[];
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
@@ -23,6 +26,7 @@ export interface SessionState {
 export const initialSessionState: SessionState = {
   attachedContext: [],
   panelOpen: false,
+  panelUnread: false,
   turns: [],
   savedChecks: [],
   toast: null,
@@ -33,6 +37,7 @@ export const initialSessionState: SessionState = {
 export type SessionAction =
   | { type: 'ADD_CONTEXT'; item: AttachedContextItem }
   | { type: 'REMOVE_CONTEXT'; instanceId: string }
+  | { type: 'SET_ATTACHED_CONTEXT'; items: AttachedContextItem[] }
   | { type: 'SET_PANEL_OPEN'; open: boolean }
   | { type: 'CREATE_TURN'; turn: ConversationTurn }
   | { type: 'SET_TURN_STAGE'; turnId: string; stage: Stage }
@@ -56,7 +61,17 @@ export type SessionAction =
   | { type: 'BEGIN_DIAGNOSIS'; turnId: string; answer: Answer }
   | { type: 'CLEAR_CONVERSATION' }
   | { type: 'SET_PIN_TRIGGER'; pinTrigger: PinTrigger }
-  | { type: 'ARCHIVE_TURN'; turnId: string };
+  | { type: 'ARCHIVE_TURN'; turnId: string }
+  | { type: 'MARK_ASSUMPTION_VALIDATED'; turnId: string; findingId: string }
+  | {
+      type: 'BEGIN_NOTIFY_ON_TURN';
+      turnId: string;
+      userQuestion: string;
+      confirmation: string;
+      dashboardAlert: DashboardAlert;
+      thoughtSteps: PipelineThoughtStep[];
+    }
+  | { type: 'SET_NOTIFY_TRACE_STAGE'; turnId: string; stage: Stage };
 
 /** Recursively locates the node at `path` within a drill-down tree and applies `updater`. */
 function updateNodeAtPath(nodes: DrillDown[], path: string[], updater: (node: DrillDown) => DrillDown): DrillDown[] {
@@ -104,7 +119,7 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
                 item.timeframeLabel === incoming.timeframeLabel,
             );
       if (exists) return state;
-      return { ...state, attachedContext: [...state.attachedContext, incoming] };
+      return { ...state, attachedContext: [incoming, ...state.attachedContext] };
     }
     case 'REMOVE_CONTEXT': {
       return {
@@ -112,14 +127,21 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
         attachedContext: state.attachedContext.filter((item) => item.instanceId !== action.instanceId),
       };
     }
+    case 'SET_ATTACHED_CONTEXT': {
+      return { ...state, attachedContext: action.items };
+    }
     case 'SET_PANEL_OPEN': {
-      return { ...state, panelOpen: action.open };
+      return {
+        ...state,
+        panelOpen: action.open,
+        panelUnread: action.open ? false : state.panelUnread,
+      };
     }
     case 'CREATE_TURN': {
       return { ...state, turns: [...state.turns, action.turn], attachedContext: [] };
     }
     case 'SET_TURN_STAGE': {
-      return updateTurn(state, action.turnId, (t) => {
+      const next = updateTurn(state, action.turnId, (t) => {
         if (t.stopped) return t;
         return {
           ...t,
@@ -127,6 +149,9 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
           phase: action.stage === 'ready' && t.phase === 'diagnosing' ? 'done' : t.phase,
         };
       });
+      const panelUnread =
+        action.stage === 'ready' && !state.panelOpen ? true : next.panelUnread;
+      return { ...next, panelUnread };
     }
     case 'REVEAL_FINDINGS': {
       return updateTurn(state, action.turnId, (t) => {
@@ -224,13 +249,52 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
       }));
     }
     case 'CLEAR_CONVERSATION': {
-      return { ...state, turns: [], pendingPrefill: null };
+      return { ...state, turns: [], pendingPrefill: null, panelUnread: false };
     }
     case 'SET_PIN_TRIGGER': {
       return { ...state, pinTrigger: action.pinTrigger };
     }
     case 'ARCHIVE_TURN': {
       return updateTurn(state, action.turnId, (t) => ({ ...t, archived: true }));
+    }
+    case 'MARK_ASSUMPTION_VALIDATED': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (t.validatedAssumptionIds?.includes(action.findingId)) return t;
+        return {
+          ...t,
+          validatedAssumptionIds: [...(t.validatedAssumptionIds ?? []), action.findingId],
+        };
+      });
+    }
+    case 'BEGIN_NOTIFY_ON_TURN': {
+      return updateTurn(state, action.turnId, (t) => ({
+        ...t,
+        notifyTrace: {
+          stage: 'analysing' as Stage,
+          thoughtSteps: action.thoughtSteps,
+          confirmation: action.confirmation,
+          dashboardAlert: action.dashboardAlert,
+          userQuestion: action.userQuestion,
+        },
+      }));
+    }
+    case 'SET_NOTIFY_TRACE_STAGE': {
+      const next = updateTurn(state, action.turnId, (t) => {
+        if (!t.notifyTrace) return t;
+        const ready = action.stage === 'ready';
+        return {
+          ...t,
+          notifyTrace: { ...t.notifyTrace, stage: action.stage },
+          notifyConfirmed: ready ? true : t.notifyConfirmed,
+          answer:
+            ready && t.answer
+              ? { ...t.answer, dashboardAlert: t.notifyTrace.dashboardAlert }
+              : t.answer,
+        };
+      });
+      const panelUnread =
+        action.stage === 'ready' && !state.panelOpen ? true : next.panelUnread;
+      return { ...next, panelUnread };
     }
     default:
       return state;

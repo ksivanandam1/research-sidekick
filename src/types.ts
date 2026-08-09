@@ -148,6 +148,25 @@ export interface Answer {
   confidence?: Confidence;
   /** Optional interactive chart embedded in the chat response. */
   chart?: AnswerChart;
+  /** Generated document artifact (e.g. executive report draft). */
+  generatedDocument?: GeneratedDocument;
+  /** Dashboard alert created from a notify confirmation. */
+  dashboardAlert?: DashboardAlert;
+  /** Optional override for the pipeline thought trace (e.g. alert setup). */
+  thoughtSteps?: PipelineThoughtStep[];
+}
+
+export interface GeneratedDocument {
+  title: string;
+  subtitle: string;
+  format?: string;
+}
+
+/** Compact alert artifact shown after the user confirms a dashboard notification. */
+export interface DashboardAlert {
+  metricTitle: string;
+  timeframeLabel: string;
+  triggerLabel: string;
 }
 
 export type Stage = 'idle' | 'analysing' | 'retrieving' | 'citing' | 'drafting' | 'linking' | 'ready';
@@ -214,6 +233,19 @@ export interface ConversationTurn {
   /** Clarifying round before diagnosis (Claude-style follow-ups). */
   phase?: TurnPhase;
   clarifying?: ClarifyingRound;
+  /** Assumptions the user confirmed with thumbs-up on this turn. */
+  validatedAssumptionIds?: string[];
+  /** In-progress or completed alert setup on this turn (does not create a new version). */
+  notifyTrace?: NotifyTrace;
+  notifyConfirmed?: boolean;
+}
+
+export interface NotifyTrace {
+  stage: Stage;
+  thoughtSteps: PipelineThoughtStep[];
+  confirmation: string;
+  dashboardAlert: DashboardAlert;
+  userQuestion: string;
 }
 
 export interface ContextItem {

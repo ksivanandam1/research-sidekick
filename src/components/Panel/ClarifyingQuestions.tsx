@@ -133,7 +133,7 @@ export function ClarifyingQuestions({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-normal leading-relaxed text-ink">{intro}</p>
+      <p className="text-sm leading-relaxed text-ink">{intro}</p>
 
       {responses.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -146,7 +146,7 @@ export function ClarifyingQuestions({
                 className="flex flex-col gap-2"
               >
                 {q && (
-                  <p className="text-sm font-normal leading-relaxed text-ink">
+                  <p className="text-sm leading-relaxed text-ink">
                     {questionIndex + 1}. {q.prompt}
                   </p>
                 )}

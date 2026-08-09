@@ -38,7 +38,7 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     anomaly: {
       label: 'Q3 dip',
       pointIndex: 8,
-      suggestedQuestion: 'Why did revenue dip in Q3?',
+      suggestedQuestion: 'Compare performance between last quarter and now',
     },
     scope: 'Subscription revenue · mid-market retail · Q1–Q3 2026',
     suggestedQuestions: ['Why did revenue dip in Q3?', 'How does Q3 compare to plan?'],
@@ -55,7 +55,7 @@ export const KPI_DEFINITIONS: KpiDefinition[] = [
     anomaly: {
       label: 'Q3 compression',
       pointIndex: 8,
-      suggestedQuestion: 'What is driving gross margin down in Q3?',
+      suggestedQuestion: 'What is driving gross margin down?',
     },
     scope: 'Gross margin · company-wide · Q1–Q3 2026',
     suggestedQuestions: ['What is driving gross margin down?', 'How does margin compare to plan?'],
@@ -371,9 +371,25 @@ const PIPELINE_STEP_DEFS: Pick<PipelineThoughtStep, 'id' | 'label' | 'stage'>[] 
   { id: 'linking', label: 'Linking figures to source reports', stage: 'linking' },
 ];
 
-/** Pull numbered steps from the answer's "### How I got here" section. */
+const REVENUE_Q3_PIPELINE_DEFS: Pick<PipelineThoughtStep, 'id' | 'label' | 'stage'>[] = [
+  { id: 'clarifying', label: 'Running pre-diagnosis checks', stage: 'analysing' },
+  { id: 'retrieving', label: 'Pulling Q3 revenue and pipeline data', stage: 'retrieving' },
+  { id: 'analysing', label: 'Isolating the dip by tier and channel', stage: 'citing' },
+  { id: 'drafting', label: 'Drafting the Q3 revenue diagnosis', stage: 'drafting' },
+  { id: 'linking', label: 'Linking figures to source reports', stage: 'linking' },
+];
+
+function isRevenueQ3Diagnosis(answer: Answer): boolean {
+  return (
+    answer.findings.some(
+      (f) => f.id.startsWith('revenue-e') || f.id.startsWith('clarified-e'),
+    ) || /outbound-sourced Pro|Q3 revenue dip/i.test(answer.summary)
+  );
+}
+
+/** Pull numbered steps from the answer's "### Proof points and evidence" section. */
 function extractHowIGotHere(summary: string): string[] {
-  const marker = '### How I got here';
+  const marker = '### Proof points and evidence';
   const start = summary.indexOf(marker);
   if (start === -1) return [];
 
@@ -437,35 +453,62 @@ function defaultAnalysingDetail(answer: Answer): string {
 
 /**
  * Pipeline thought trace for the side panel: short stage label plus concrete
- * detail subtext derived from the answer's "How I got here" script when present.
+ * detail subtext derived from the answer's proof points section when present.
  */
 export function buildPipelineThoughtSteps(answer: Answer): PipelineThoughtStep[] {
-  const howSteps = extractHowIGotHere(answer.summary);
+  if (answer.thoughtSteps?.length) {
+    return answer.thoughtSteps;
+  }
 
-  const clarifyingDetail =
-    howSteps.length > 0
-      ? 'Applied your clarifying answers on billing one-offs, forecast method, Pro churn, and outbound coverage before running the diagnosis.'
+  const howSteps = extractHowIGotHere(answer.summary);
+  const isRevenueQ3 = isRevenueQ3Diagnosis(answer);
+  const defs = isRevenueQ3 ? REVENUE_Q3_PIPELINE_DEFS : PIPELINE_STEP_DEFS;
+
+  const clarifyingDetail = isRevenueQ3
+    ? 'Checked billing one-offs, forecast method, Pro churn, and outbound team changes before diagnosing the Q3 dip.'
+    : howSteps.length > 0
+      ? 'Applied your clarifying answers before running the diagnosis.'
       : 'Scoped the question to the attached charts and metrics before retrieving data.';
 
-  const analysingDetail =
-    howSteps.length >= 2
+  const analysingDetail = isRevenueQ3
+    ? howSteps.length >= 2
+      ? `${howSteps[0]} ${howSteps[1]}`
+      : 'Compared Pro QoQ vs YoY, split revenue by tier, and isolated outbound-sourced Pro deals.'
+    : howSteps.length >= 2
       ? `${howSteps[0]} ${howSteps[1]}`
       : howSteps[0] ?? defaultAnalysingDetail(answer);
 
-  const draftingDetail =
-    howSteps[2] ??
-    howSteps[howSteps.length - 1] ??
-    'Drafted a plain-language explanation from the evidence gathered.';
+  const draftingDetail = isRevenueQ3
+    ? howSteps[2] ??
+      'Drafted the read that the Q3 miss is concentrated in outbound Pro, not a broad decline across tiers.'
+    : howSteps[2] ??
+      howSteps[howSteps.length - 1] ??
+      'Drafted a plain-language explanation from the evidence gathered.';
+
+  const retrievedDetailRaw = buildRetrievalDetail(answer);
+  const linkingDetailRaw = buildLinkingDetail(answer);
+
+  const retrievingDetail =
+    isRevenueQ3 &&
+    retrievedDetailRaw === 'Pulled related metrics and source reports for the attached context.'
+      ? 'Queried Xero revenue, SFDC tier and pipeline views, and RevOps notes on outbound Pro.'
+      : retrievedDetailRaw;
+
+  const linkingDetail =
+    isRevenueQ3 &&
+    linkingDetailRaw === 'Cross-checked figures against available source reports.'
+      ? 'Linked the $2.1M vs $2.4M miss, tier split, and channel cut to Finance, SFDC, and RevOps sources.'
+      : linkingDetailRaw;
 
   const detailById: Record<string, string> = {
     clarifying: clarifyingDetail,
-    retrieving: buildRetrievalDetail(answer),
+    retrieving: retrievingDetail,
     analysing: analysingDetail,
     drafting: draftingDetail,
-    linking: buildLinkingDetail(answer),
+    linking: linkingDetail,
   };
 
-  return PIPELINE_STEP_DEFS.map((def) => ({
+  return defs.map((def) => ({
     ...def,
     detail: forThoughtTrace(detailById[def.id] ?? ''),
   }));
@@ -473,6 +516,12 @@ export function buildPipelineThoughtSteps(answer: Answer): PipelineThoughtStep[]
 
 /** One-line label for the collapsed thought trace once analysis is complete. */
 export function getThoughtTraceSummary(answer: Answer): string {
+  if (answer.dashboardAlert) {
+    return `Alert added for ${answer.dashboardAlert.metricTitle}`;
+  }
+  if (answer.thoughtSteps?.length === 1) {
+    return answer.thoughtSteps[0].label;
+  }
   if (answer.pinSummary) {
     const short = answer.pinSummary.split(/[.!]/)[0]?.trim();
     if (short && short.length <= 52) return short;
@@ -507,14 +556,125 @@ export function shouldStartClarifying(question: string): boolean {
 
 /** Short follow-ups from notify suggested prompts — skip the full diagnosis flow. */
 export function isNotifyFollowUp(question: string): boolean {
-  return /yes.*notify|please notify me|something else.*don'?t know/i.test(question.trim());
+  return /please (?:notify me|set a notification)|yes.*notify|what questions should i ask maya/i.test(question.trim());
 }
 
-export function resolveNotifyFollowUp(question: string, topic = 'revenue'): Answer {
-  if (/yes.*notify|please notify me/i.test(question)) {
+export function isDraftReportQuestion(question: string): boolean {
+  return /draft an executive report/i.test(question.trim());
+}
+
+/** Side-panel reply after the user thumbs-up validates an assumption. */
+export function assumptionAckMessage(remaining: number): string {
+  if (remaining === 1) {
+    return "Good — that assumption holds. I've tightened confidence on this thread. One more assumption below still needs your read.";
+  }
+  if (remaining > 1) {
+    return `Good — that assumption holds. I've tightened confidence on this thread. ${remaining} more assumptions below still need your read.`;
+  }
+  return "Good — that assumption holds. I've updated confidence across this analysis.";
+}
+
+export function isAssumptionConfirmQuestion(question: string): boolean {
+  return /^this assumption holds\.?$/i.test(question.trim());
+}
+
+export function resolveAssumptionConfirmAnswer(
+  sourceTurn: { answer?: Answer; revealedFindingIds: string[]; validatedAssumptionIds?: string[] },
+  findingId: string,
+): Answer {
+  const source = sourceTurn.answer;
+  if (!source) {
+    return { summary: assumptionAckMessage(0), findings: [] };
+  }
+
+  const assumptions = source.findings.filter(
+    (finding) =>
+      finding.kind === 'assumption' && sourceTurn.revealedFindingIds.includes(finding.id),
+  );
+  const nextValidated = [...(sourceTurn.validatedAssumptionIds ?? []), findingId];
+  const remaining = assumptions.filter((item) => !nextValidated.includes(item.id)).length;
+
+  const findings = source.findings.map((finding) => {
+    if (finding.kind !== 'assumption' || !nextValidated.includes(finding.id)) {
+      return finding;
+    }
     return {
-      confidence: 'high',
-      summary: `Got it — I'll watch **${topic}** and notify you when it moves meaningfully. You can review or turn this off anytime from **Manage alerts**.`,
+      ...finding,
+      kind: 'evidence' as const,
+      confidence: 'high' as const,
+      revised: true,
+      revisedNote: 'Confirmed by you — incorporated into the analysis.',
+    };
+  });
+
+  const ack = assumptionAckMessage(remaining);
+  const bodyParts = source.summary.split(/\n\n---\n\n/);
+  const analysisBody = bodyParts.length > 1 ? bodyParts.slice(1).join('\n\n---\n\n') : source.summary;
+  let updatedBody = analysisBody;
+
+  if (nextValidated.includes('revenue-a1')) {
+    updatedBody = updatedBody.replace(
+      '3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
+      '3. Split Pro by channel and checked deal size — you confirmed the self-serve vs outbound mix did not shift enough to explain the miss. Volume is down, pricing is stable[4].',
+    );
+  }
+  if (nextValidated.includes('revenue-a2')) {
+    updatedBody = updatedBody.replace(
+      '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.',
+      '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). You confirmed seasonality is not the driver — this looks like a real shift, not a cyclical dip.',
+    );
+  }
+
+  const refreshIntro =
+    remaining > 0
+      ? "I've refreshed the analysis below with your validated assumptions."
+      : "I've refreshed the analysis with your validated assumptions.";
+
+  return {
+    confidence: 'high',
+    summary: [ack, '---', refreshIntro, '---', updatedBody].join('\n\n'),
+    pinSummary: source.pinSummary,
+    findings,
+    chart: source.chart,
+    generatedDocument: source.generatedDocument,
+  };
+}
+
+export function resolveNotifyFollowUp(question: string, metricTitle = 'Revenue'): Answer {
+  const topic = metricTitle.toLowerCase();
+  if (/please (?:notify me|set a notification)|yes.*notify/i.test(question)) {
+    return {
+      summary: `Got it — I've added an alert to the dashboard to monitor **${topic}** this quarter. I'll notify you when it moves meaningfully. You can review or turn this off anytime from **Manage alerts**.`,
+      findings: [],
+      thoughtSteps: [
+        {
+          id: 'alert-setup',
+          label: 'Adding an alert to your dashboard',
+          detail: `Setting up monitoring for ${metricTitle} this quarter.`,
+          stage: 'analysing',
+        },
+        {
+          id: 'alert-save',
+          label: 'Saving to Manage alerts',
+          detail: `You'll be notified when ${topic} moves meaningfully.`,
+          stage: 'linking',
+        },
+      ],
+      dashboardAlert: {
+        metricTitle,
+        timeframeLabel: 'This quarter',
+        triggerLabel: 'drops below 10%',
+      },
+    };
+  }
+  if (/what questions should i ask maya/i.test(question)) {
+    return {
+      summary: [
+        'Start with these three questions for **Maya Chen in RevOps**:',
+        '1. Did **outbound capacity drop in Q3** — fewer reps or territories reshuffled mid-quarter?',
+        '2. Are **first meetings still converting** at the same rate, or did the funnel tighten?',
+        '3. Was there any **change to quotas or comp** that would explain the outbound Pro miss?',
+      ].join('\n\n'),
       findings: [],
     };
   }
@@ -584,11 +744,11 @@ export const REVENUE_DIP_ANSWER: Answer = {
     '---',
     '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
     'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
-    '### How I got here',
+    '### Validation needed',
+    "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
+    '### Proof points and evidence',
     '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
     'We were able to diagnose the segment based on your tier and channel data.',
-    '## Validation needed',
-    "I was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them. **Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting** — that answer decides if this is a headcount problem or a conversion problem.",
   ].join('\n\n'),
   pinSummary:
     'Q3 missed forecast by 12%, but the drop is outbound Pro — not a broad decline across tiers.',
@@ -625,7 +785,7 @@ export const REVENUE_DIP_ANSWER: Answer = {
       id: 'revenue-a1',
       kind: 'assumption',
       metricId: 'revenue',
-      text: 'Assuming self-serve vs outbound mix inside Pro did not shift enough to explain the outbound miss on its own.',
+      text: 'Self-serve vs outbound mix inside Pro did not shift enough to explain the outbound miss on its own.',
       confidence: 'medium',
       sourceIds: [],
     },
@@ -637,15 +797,56 @@ export const REVENUE_DIP_ANSWER: Answer = {
       confidence: 'medium',
       sourceIds: ['srcFinanceRevenue'],
     },
+  ],
+};
+
+export const DRAFT_REPORT_ANSWER: Answer = {
+  confidence: 'medium',
+  summary: [
+    "I've drafted an executive report from the KPIs on this dashboard. The headline story is a Q3 revenue miss concentrated in outbound Pro — not a broad slowdown across the business.",
+    '---',
+    '## Q3 miss is outbound Pro, while margin and churn stay in range',
+    '**Revenue** landed at **$2.1M vs $2.4M forecast** (-12%)[1]. **Gross margin** held near **68%**[2]. **Churn** rose modestly to **4.1%**, largely from budget friction in APAC enterprise[3]. The report focuses on **outbound-sourced Pro**, where new business is down roughly **50% QoQ**[4].',
+    '### Proof points and evidence',
+    '1. Snapshotted all dashboard KPIs for this quarter vs forecast and the prior period.\n2. Ranked variances by magnitude — revenue drove the narrative.\n3. Decomposed revenue by tier and channel; isolated outbound Pro as the outlier.\n4. Structured the executive report with evidence, assumptions flagged for review, and follow-ups for RevOps.',
+    'Open the draft below to review, edit, or share with leadership.',
+  ].join('\n\n'),
+  pinSummary: 'Executive report drafted — Q3 miss is outbound Pro, not a broad decline.',
+  generatedDocument: {
+    title: 'Q3 Executive Dashboard Report',
+    subtitle: 'Executive report · This quarter',
+    format: 'Google Doc',
+  },
+  findings: [
     {
-      id: 'revenue-u1',
-      kind: 'unknown',
+      id: 'report-e1',
+      kind: 'evidence',
       metricId: 'revenue',
-      text: 'Did outbound rep headcount or first-meeting volume drop in Q3?',
-      sourceIds: [],
+      text: 'Q3 revenue was $2.1M versus a $2.4M forecast, a 12% miss.',
+      sourceIds: ['srcFinanceRevenue'],
+    },
+    {
+      id: 'report-e2',
+      kind: 'evidence',
+      metricId: 'grossMargin',
+      text: 'Gross margin held near 68% quarter on quarter.',
+      sourceIds: ['srcFinanceRevenue'],
+    },
+    {
+      id: 'report-e3',
+      kind: 'evidence',
+      metricId: 'churn',
+      text: 'Churn rose to 4.1%, concentrated in APAC enterprise budget-driven exits.',
+      sourceIds: ['srcSfdcChurn'],
+    },
+    {
+      id: 'report-e4',
+      kind: 'evidence',
+      metricId: 'revenue',
+      text: 'Outbound-sourced Pro new business is down roughly 50% QoQ.',
+      sourceIds: ['srcSlackRevOps', 'srcSfdcPipeline'],
     },
   ],
-  nextCheck: 'Confirm with RevOps whether outbound capacity or late-stage conversion dropped in Q3.',
 };
 
 export const CHURN_SOLO_ANSWER: Answer = {
@@ -677,7 +878,6 @@ export const CHURN_SOLO_ANSWER: Answer = {
       sourceIds: [],
     },
   ],
-  nextCheck: 'Break down churn by segment (Enterprise vs SMB) for Q3.',
 };
 
 export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
@@ -711,7 +911,6 @@ export const REVENUE_CHURN_COMBINED_ANSWER: Answer = {
       sourceIds: [],
     },
   ],
-  nextCheck: 'Split churn by tier (Starter / Growth / Pro) before treating retention as part of the revenue miss.',
 };
 
 export const PRO_OUTBOUND_DRILLDOWN_ANSWER: Answer = {
@@ -745,7 +944,6 @@ export const PRO_OUTBOUND_DRILLDOWN_ANSWER: Answer = {
       sourceIds: [],
     },
   ],
-  nextCheck: 'Compare outbound meeting volume and stage conversion for Pro this quarter vs last.',
 };
 
 export const PRO_VOLUME_DRILLDOWN_ANSWER: Answer = {
@@ -770,7 +968,6 @@ export const PRO_VOLUME_DRILLDOWN_ANSWER: Answer = {
       sourceIds: ['srcFinancePricing'],
     },
   ],
-  nextCheck: 'Pull Pro stage conversion from SQL → closed-won for Q2 vs Q3 to see where volume leaks.',
 };
 
 export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
@@ -793,7 +990,6 @@ export const CHURN_SMB_DRILLDOWN_ANSWER: Answer = {
       sourceIds: [],
     },
   ],
-  nextCheck: 'Re-check SMB churn again after October close.',
 };
 
 /**
@@ -818,11 +1014,11 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
       '---',
       '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
       'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
-      '### How I got here',
+      '### Validation needed',
+      "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
+      '### Proof points and evidence',
       "1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].",
       'We were able to diagnose the segment based on your tier and channel data.',
-      '## Validation needed',
-      "I was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them. **Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting** — that answer decides if this is a headcount problem or a conversion problem.",
     ].join('\n\n'),
     pinSummary:
       'Seasonality ruled out — Q3 miss is outbound Pro, not a cyclical dip.',
@@ -860,7 +1056,7 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
         id: 'clarified-a1',
         kind: 'assumption',
         metricId: 'revenue',
-        text: 'Assuming self-serve vs outbound mix inside Pro did not shift enough to explain the outbound miss on its own.',
+        text: 'Self-serve vs outbound mix inside Pro did not shift enough to explain the outbound miss on its own.',
         confidence: 'medium',
         sourceIds: [],
       },
@@ -904,7 +1100,6 @@ export function genericAnswerFor(kpi: KpiDefinition): Answer {
         sourceIds: [],
       },
     ],
-    nextCheck: `Pull a segment-level breakdown of ${kpi.title} for Q3.`,
   };
 }
 
@@ -913,7 +1108,6 @@ export function mergeGenericAnswers(kpis: KpiDefinition[]): Answer {
   return {
     summary: answers.map((a) => a.summary).join(' '),
     findings: answers.flatMap((a) => a.findings),
-    nextCheck: answers[answers.length - 1]?.nextCheck,
   };
 }
 
@@ -938,7 +1132,6 @@ export function genericDrillDownAnswer(question: string, metricId: MetricId): An
         sourceIds: [],
       },
     ],
-    nextCheck: `Re-run this with a regional breakdown for ${kpi.title}.`,
   };
 }
 
