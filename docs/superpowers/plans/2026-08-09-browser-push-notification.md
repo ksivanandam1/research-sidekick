@@ -44,7 +44,7 @@
   - `clearResponseReadyIndicators(): void`
   - `truncateNotificationBody(text: string, maxLen?: number): string` (exported for clarity / reuse)
 
-- [ ] **Step 1: Create `src/utils/responseReadyNotify.ts` with the full module**
+- [x] **Step 1: Create `src/utils/responseReadyNotify.ts` with the full module**
 
 ```ts
 const NOTIFICATION_TAG = 'research-response-ready';
@@ -191,12 +191,12 @@ export function notifyResponseReady(args: { body: string }): void {
 }
 ```
 
-- [ ] **Step 2: Typecheck the new util**
+- [x] **Step 2: Typecheck the new util**
 
 Run: `npx tsc -b --pretty false 2>&1 | head -40`  
 Expected: no errors referencing `responseReadyNotify.ts` (project may have unrelated pre-existing errors — only fix issues introduced by this file).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/utils/responseReadyNotify.ts
@@ -219,7 +219,7 @@ EOF
 - Consumes: `ensureNotificationPermission`, `notifyResponseReady` from Task 1
 - Produces: `RunAnswerJobArgs` gains `responseBody: string`
 
-- [ ] **Step 1: Extend `RunAnswerJobArgs` and call notify APIs in `useAgentRun.ts`**
+- [x] **Step 1: Extend `RunAnswerJobArgs` and call notify APIs in `useAgentRun.ts`**
 
 Update imports and interface:
 
@@ -257,7 +257,7 @@ notifyResponseReady({ body: responseBody });
 
 Do **not** add notify calls to `runRevisionJob` or `runAssumptionValidationJob`.
 
-- [ ] **Step 2: Pass `responseBody` from `startDiagnosisJob` in `ResearchContext.tsx`**
+- [x] **Step 2: Pass `responseBody` from `startDiagnosisJob` in `ResearchContext.tsx`**
 
 ```ts
 runAnswerJob({
@@ -269,13 +269,13 @@ runAnswerJob({
 });
 ```
 
-- [ ] **Step 3: Typecheck / lint touched files**
+- [x] **Step 3: Typecheck / lint touched files**
 
 Run: `npx tsc -b --pretty false 2>&1 | head -40`  
 Run: `npm run lint`  
 Expected: clean for changed files; fix any new errors introduced by this wiring.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/hooks/useAgentRun.ts src/state/ResearchContext.tsx
@@ -292,7 +292,7 @@ EOF
 
 **Files:** none
 
-- [ ] **Step 1: Run the app**
+- [x] **Step 1: Run the app**
 
 Run: `npm run dev`  
 Open the app, allow notifications when prompted (or on first answer submit).
@@ -310,7 +310,7 @@ Open the app, allow notifications when prompted (or on first answer submit).
 1. Stay on the tab through ready → no OS notification, no favicon badge; chime still plays.  
 2. (Optional) In site settings, block notifications, rerun background path → badge still appears, no OS notification.
 
-- [ ] **Step 4: No further commit unless fixes were needed**
+- [x] **Step 4: No further commit unless fixes were needed**
 
 If bugs found, fix in the relevant file and commit with a focused message (e.g. `fix: clear favicon badge on tab focus`).
-`}
+}

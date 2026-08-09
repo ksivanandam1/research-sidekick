@@ -1,11 +1,21 @@
+import { restoreFaviconHref, setBadgedFavicon } from './favicon';
+
 const NOTIFICATION_TAG = 'research-response-ready';
 const NOTIFICATION_TITLE = 'Research sidekick responded';
+const DEFAULT_TAB_TITLE = 'Company performance';
+const ALERT_TAB_TITLE = 'Sidekick responded';
+const TITLE_FLASH_MS = 1000;
+/** Cap flashing while the tab is already focused so the title doesn't loop forever. */
+const TITLE_FLASH_MAX_TICKS_WHEN_VISIBLE = 6;
 const DEFAULT_BODY_MAX = 120;
 
 let originalFaviconHref: string | null = null;
 let badgeActive = false;
 let activeNotification: Notification | null = null;
 let visibilityBound = false;
+let titleFlashTimer: number | null = null;
+let titleFlashOnAlert = false;
+let titleFlashTicks = 0;
 
 export function truncateNotificationBody(text: string, maxLen = DEFAULT_BODY_MAX): string {
   const normalized = text
@@ -32,64 +42,51 @@ export async function ensureNotificationPermission(): Promise<void> {
   }
 }
 
-function ensureFaviconLink(): HTMLLinkElement {
-  const existing = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-  if (existing) return existing;
-  const link = document.createElement('link');
-  link.rel = 'icon';
-  document.head.appendChild(link);
-  return link;
-}
-
-function buildBadgedFaviconDataUrl(): string {
-  const size = 32;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return '';
-
-  // Neutral base so the tab always has a visible icon even without a prior favicon.
-  ctx.fillStyle = '#1f2937';
-  ctx.beginPath();
-  ctx.roundRect(2, 2, size - 4, size - 4, 6);
-  ctx.fill();
-
-  // Blue notification dot (top-right).
-  ctx.fillStyle = '#2563eb';
-  ctx.beginPath();
-  ctx.arc(size - 7, 7, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  return canvas.toDataURL('image/png');
-}
-
 function setFaviconBadge(): void {
-  const link = ensureFaviconLink();
   if (!badgeActive) {
-    originalFaviconHref = link.getAttribute('href');
+    originalFaviconHref = setBadgedFavicon();
+  } else {
+    setBadgedFavicon();
   }
-  const dataUrl = buildBadgedFaviconDataUrl();
-  if (!dataUrl) return;
-  link.href = dataUrl;
   badgeActive = true;
 }
 
 function restoreFavicon(): void {
   if (!badgeActive) return;
-  const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-  if (link) {
-    if (originalFaviconHref) {
-      link.href = originalFaviconHref;
-    } else {
-      link.remove();
-    }
-  }
+  restoreFaviconHref(originalFaviconHref);
   originalFaviconHref = null;
   badgeActive = false;
+}
+
+function startTitleFlash(): void {
+  if (typeof document === 'undefined') return;
+  stopTitleFlash();
+
+  titleFlashOnAlert = true;
+  titleFlashTicks = 0;
+  document.title = ALERT_TAB_TITLE;
+  titleFlashTimer = window.setInterval(() => {
+    titleFlashTicks += 1;
+    titleFlashOnAlert = !titleFlashOnAlert;
+    document.title = titleFlashOnAlert ? ALERT_TAB_TITLE : DEFAULT_TAB_TITLE;
+
+    // Background tabs keep flashing until focus; focused tabs stop after a short burst.
+    if (!document.hidden && titleFlashTicks >= TITLE_FLASH_MAX_TICKS_WHEN_VISIBLE) {
+      stopTitleFlash();
+    }
+  }, TITLE_FLASH_MS);
+}
+
+function stopTitleFlash(): void {
+  if (titleFlashTimer !== null) {
+    window.clearInterval(titleFlashTimer);
+    titleFlashTimer = null;
+  }
+  titleFlashOnAlert = false;
+  titleFlashTicks = 0;
+  if (typeof document !== 'undefined') {
+    document.title = DEFAULT_TAB_TITLE;
+  }
 }
 
 function bindVisibilityClear(): void {
@@ -104,6 +101,7 @@ function bindVisibilityClear(): void {
 
 export function clearResponseReadyIndicators(): void {
   restoreFavicon();
+  stopTitleFlash();
   if (activeNotification) {
     try {
       activeNotification.close();
@@ -118,6 +116,7 @@ export function notifyResponseReady(args: { body: string }): void {
   if (typeof document === 'undefined') return;
 
   bindVisibilityClear();
+  startTitleFlash();
 
   // Blue tab dot only when the user is elsewhere; OS notification always fires.
   if (document.hidden) {
