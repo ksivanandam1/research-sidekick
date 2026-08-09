@@ -1,4 +1,4 @@
-import { Bell, CircleHelp, Dna, PanelLeft, Search } from 'lucide-react';
+import { Bell, CircleHelp, PanelLeft, Search, Sparkle } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
 
 interface GlobalHeaderProps {
@@ -54,7 +54,7 @@ export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
           className="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface text-sm font-medium text-ink transition-opacity hover:opacity-90"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber via-sage to-ocean text-white">
-            <Dna size={12} strokeWidth={2.25} />
+            <Sparkle size={12} strokeWidth={2.25} />
           </span>
           {showResearchBadge && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sage px-1 text-[9px] font-semibold text-white">
