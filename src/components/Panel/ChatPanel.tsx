@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useResearch } from '../../state/ResearchContext';
+import { isChartContext } from '../../types';
 import { deriveChatTitle } from '../../utils/chatTitle';
 import { PanelHeader } from './PanelHeader';
 import { ConversationTurnCard } from './ConversationTurnCard';
@@ -13,7 +14,17 @@ import { ActiveClarifyingCard } from './ClarifyingQuestions';
 const BOTTOM_THRESHOLD_PX = 48;
 
 export function ChatPanel() {
-  const { turns, closePanel, startNewChat, answerClarifying } = useResearch();
+  const {
+    turns,
+    attachedContext,
+    chatHistory,
+    activeChatId,
+    closePanel,
+    startNewChat,
+    selectChat,
+    answerClarifying,
+  } = useResearch();
+  const hasChartContext = attachedContext.some(isChartContext);
   const [exportOpen, setExportOpen] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -23,6 +34,21 @@ export function ChatPanel() {
     const firstQuestion = turns[0]?.question;
     return firstQuestion ? deriveChatTitle(firstQuestion) : 'Ask Sidekick';
   }, [turns]);
+
+  const chats = useMemo(() => {
+    const items =
+      turns.length > 0 && activeChatId
+        ? [{ id: activeChatId, title: chatTitle, isActive: true }]
+        : [];
+    return [
+      ...items,
+      ...chatHistory.map((chat) => ({
+        id: chat.id,
+        title: chat.title,
+        isActive: false,
+      })),
+    ];
+  }, [turns.length, activeChatId, chatTitle, chatHistory]);
   const priorTurns = turns.slice(0, -1);
   const latestTurn = turns[turns.length - 1] ?? null;
 
@@ -86,6 +112,8 @@ export function ChatPanel() {
         onNewChat={startNewChat}
         onShare={() => setExportOpen(true)}
         shareDisabled={!lastReadyTurn}
+        chats={chats}
+        onSelectChat={selectChat}
       />
 
       <div className="relative min-h-0 flex-1">
@@ -94,10 +122,9 @@ export function ChatPanel() {
           onScroll={updateAtBottom}
           className="h-full overflow-y-auto px-5 py-4"
         >
-          {turns.length === 0 ? (
-            <InvestigationEmptyState />
-          ) : (
-            <div className="flex flex-col gap-4 pb-28">
+          {turns.length === 0 && !hasChartContext && <InvestigationEmptyState />}
+          {turns.length > 0 && (
+            <div className="flex flex-col gap-4 pb-12">
               {priorTurns.map((turn, index) => (
                 <CompactInvestigationStep key={turn.id} turn={turn} stepNumber={index + 1} />
               ))}

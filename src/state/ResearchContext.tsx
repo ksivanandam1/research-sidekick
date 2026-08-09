@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, useRef, type ReactNode } from 'react';
 import type {
   AttachedContextItem,
+  ChatHistoryEntry,
   ContextId,
   ConversationTurn,
   Finding,
@@ -13,6 +14,7 @@ import { isAssumptionContext, isChartContext } from '../types';
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
+  DASHBOARD_INSIGHTS_ANSWER,
   DRAFT_REPORT_ANSWER,
   REVENUE_DIP_ANSWER,
   buildRevenueClarifyingRound,
@@ -20,6 +22,7 @@ import {
   getContextItem,
   getKpi,
   isAssumptionConfirmQuestion,
+  isDashboardInsightsQuestion,
   isDraftReportQuestion,
   isNotifyFollowUp,
   resolveAnswer,
@@ -45,6 +48,8 @@ interface ResearchContextValue {
   panelOpen: boolean;
   panelUnread: boolean;
   turns: ConversationTurn[];
+  chatHistory: ChatHistoryEntry[];
+  activeChatId: string | null;
   savedChecks: SavedCheck[];
   toast: { id: number; message: string } | null;
   pendingPrefill: string | null;
@@ -59,6 +64,7 @@ interface ResearchContextValue {
   openPanel: () => void;
   closePanel: () => void;
   startNewChat: () => void;
+  selectChat: (chatId: string) => void;
   consumePrefill: () => void;
   submitQuestion: (
     question: string,
@@ -92,7 +98,21 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
 
   const openPanel = useCallback(() => dispatch({ type: 'SET_PANEL_OPEN', open: true }), []);
   const closePanel = useCallback(() => dispatch({ type: 'SET_PANEL_OPEN', open: false }), []);
-  const startNewChat = useCallback(() => dispatch({ type: 'CLEAR_CONVERSATION' }), []);
+  const startNewChat = useCallback(() => {
+    cancelRun();
+    pendingTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    pendingTimeoutsRef.current.clear();
+    dispatch({ type: 'START_NEW_CHAT' });
+  }, [cancelRun]);
+  const selectChat = useCallback(
+    (chatId: string) => {
+      cancelRun();
+      pendingTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      pendingTimeoutsRef.current.clear();
+      dispatch({ type: 'SELECT_CHAT', chatId });
+    },
+    [cancelRun],
+  );
   const consumePrefill = useCallback(() => dispatch({ type: 'SET_PENDING_PREFILL', text: null }), []);
   const setPinTrigger = useCallback(
     (pinTrigger: PinTrigger) => dispatch({ type: 'SET_PIN_TRIGGER', pinTrigger }),
@@ -117,7 +137,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       }
       dispatch({
         type: 'SHOW_TOAST',
-        message: `Added ${meta.title} (${opts.timeframeLabel}) to investigation scope.`,
+        message: 'Chart added to chat',
       });
     },
     [],
@@ -183,7 +203,10 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
           : (priorTurn?.contextItems ?? []);
       const chartItems = contextItems.filter(isChartContext);
       const assumptionItem = contextItems.find(isAssumptionContext);
-      const contextIds = chartItems.map((item) => item.id);
+      const contextIds =
+        chartItems.length > 0
+          ? chartItems.map((item) => item.id)
+          : (priorTurn?.usedContextIds ?? []);
       const usedContextIds = determineUsedContext(trimmed, contextIds);
 
       if (assumptionItem && isAssumptionConfirmQuestion(trimmed)) {
@@ -305,6 +328,30 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
           contextIds,
           contextItems,
           usedContextIds,
+          stage: 'analysing',
+          phase: 'diagnosing',
+          answer,
+          revealedFindingIds: [],
+          drillDowns: [],
+          activePath: [],
+        };
+        dispatch({ type: 'CREATE_TURN', turn });
+        startDiagnosisJob(turn.id, answer);
+        return;
+      }
+
+      if (isDashboardInsightsQuestion(trimmed)) {
+        const answer = DASHBOARD_INSIGHTS_ANSWER;
+        const dashboardContextIds: MetricId[] =
+          usedContextIds.length > 0
+            ? usedContextIds
+            : ['revenue', 'grossMargin', 'churn', 'newArr'];
+        const turn: ConversationTurn = {
+          id: nextId('turn'),
+          question: trimmed,
+          contextIds: dashboardContextIds,
+          contextItems,
+          usedContextIds: dashboardContextIds,
           stage: 'analysing',
           phase: 'diagnosing',
           answer,
@@ -473,6 +520,8 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       panelOpen: state.panelOpen,
       panelUnread: state.panelUnread,
       turns: state.turns,
+      chatHistory: state.chatHistory,
+      activeChatId: state.activeChatId,
       savedChecks: state.savedChecks,
       toast: state.toast,
       pendingPrefill: state.pendingPrefill,
@@ -484,6 +533,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       openPanel,
       closePanel,
       startNewChat,
+      selectChat,
       consumePrefill,
       submitQuestion,
       submitQuestionForMetric,
@@ -505,6 +555,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       openPanel,
       closePanel,
       startNewChat,
+      selectChat,
       consumePrefill,
       setPinTrigger,
       submitQuestion,

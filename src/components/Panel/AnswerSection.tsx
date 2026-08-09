@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Copy, RotateCcw, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react';
-import type { Answer, ConversationTurn, Finding, NotifyTrace, ResponseFeedback, ResponseFeedbackReason, Stage } from '../../types';
+import type {
+  Answer,
+  ConversationTurn,
+  Finding,
+  NotifyTrace,
+  ResponseFeedback,
+  ResponseFeedbackReason,
+  Stage,
+} from '../../types';
 import { useResearch } from '../../state/ResearchContext';
 import { useTypewriter } from '../../hooks/useTypewriter';
 import { ConfidenceBadge } from './ConfidenceBadge';
@@ -12,7 +20,7 @@ import { DashboardAlertCard } from './DashboardAlertCard';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ResponseFeedbackModal } from './ResponseFeedbackModal';
 import { ThoughtTrace } from './ThoughtTrace';
-import { splitValidationFromSummary } from '../../utils/summarySections';
+import { splitUnknownsFromSummary, splitValidationFromSummary } from '../../utils/summarySections';
 
 interface AnswerSectionProps {
   answer: Answer;
@@ -110,24 +118,28 @@ function NextBestStepSection({
   validationNeeded,
   notifyTopic,
   notifyRevised,
+  nextStepQuestion,
   citations,
 }: {
   validationNeeded: string | null;
   notifyTopic?: string;
   notifyRevised?: boolean;
+  nextStepQuestion?: string;
   citations: Finding[];
 }) {
-  if (!validationNeeded && !notifyTopic) return null;
+  if (!validationNeeded && !notifyTopic && !nextStepQuestion) return null;
 
-  const notifyQuestion = notifyTopic
-    ? notifyRevised
-      ? `Would you still like me to notify you if there are any changes to ${notifyTopic} this quarter?`
-      : `Would you like me to notify you on future changes to ${notifyTopic}?`
-    : null;
+  const closingQuestion =
+    nextStepQuestion ??
+    (notifyTopic
+      ? notifyRevised
+        ? `Would you still like me to notify you if there are any changes to ${notifyTopic} this quarter?`
+        : `Would you like me to notify you on future changes to ${notifyTopic}?`
+      : null);
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold leading-snug text-ink">Your next best step</h2>
+      <h2 className="text-lg font-semibold leading-snug text-ink">Suggested next steps</h2>
       {validationNeeded && (
         <ul className="list-disc space-y-2 pl-4 text-sm leading-relaxed text-ink">
           <li>
@@ -140,13 +152,13 @@ function NextBestStepSection({
               </p>
             ))}
           </li>
-          {notifyTopic && (
+          {notifyTopic && !nextStepQuestion && (
             <li>Set an alert to monitor future changes in {notifyTopic}.</li>
           )}
         </ul>
       )}
-      {notifyQuestion && (
-        <p className="text-sm font-semibold leading-relaxed text-ink">{notifyQuestion}</p>
+      {closingQuestion && (
+        <p className="text-sm font-semibold leading-relaxed text-ink">{closingQuestion}</p>
       )}
     </div>
   );
@@ -174,7 +186,10 @@ export function AnswerSection({
   const { showToast, submitQuestion } = useResearch();
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const { summaryBody, validationNeeded } = splitValidationFromSummary(answer.summary);
+  const { summaryBody: withoutValidation, validationNeeded } = splitValidationFromSummary(
+    answer.summary,
+  );
+  const { summaryBody } = splitUnknownsFromSummary(withoutValidation);
   const summaryActive = stage === 'drafting';
   const summaryText = useTypewriter(summaryBody, summaryActive);
   const summaryVisible = stage === 'drafting' || stage === 'linking' || stage === 'ready';
@@ -264,7 +279,7 @@ export function AnswerSection({
 
       {showBelowSummary && assumptions.length > 0 && (
         <FindingGroup
-          heading="Assumptions"
+          heading="Requires clarification"
           findings={assumptions}
           defaultExpanded={true}
           showMetricTags={showMetricTags}
@@ -273,11 +288,15 @@ export function AnswerSection({
         />
       )}
 
-      {isReady && showBelowSummary && !archived && (validationNeeded || notifyTopic) && (
+      {isReady &&
+        showBelowSummary &&
+        !archived &&
+        (validationNeeded || notifyTopic || answer.nextStepQuestion) && (
         <NextBestStepSection
           validationNeeded={validationNeeded}
           notifyTopic={notifyTopic}
           notifyRevised={notifyRevised}
+          nextStepQuestion={answer.nextStepQuestion}
           citations={citations}
         />
       )}

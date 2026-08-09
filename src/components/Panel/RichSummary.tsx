@@ -80,8 +80,8 @@ function renderBlock(block: string, key: number, citations: Finding[]) {
   }
 
   const lines = trimmed.split('\n');
-  const isList = lines.every((line) => /^\d+\.\s/.test(line.trim()) || line.trim() === '');
-  if (isList) {
+  const isNumberedList = lines.every((line) => /^\d+\.\s/.test(line.trim()) || line.trim() === '');
+  if (isNumberedList) {
     return (
       <ol key={key} className="list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-ink">
         {lines
@@ -90,6 +90,19 @@ function renderBlock(block: string, key: number, citations: Finding[]) {
             <li key={i}>{renderInline(line.replace(/^\d+\.\s*/, ''), citations)}</li>
           ))}
       </ol>
+    );
+  }
+
+  const isBulletList = lines.every((line) => /^[-*•]\s/.test(line.trim()) || line.trim() === '');
+  if (isBulletList) {
+    return (
+      <ul key={key} className="list-disc space-y-1.5 pl-4 text-sm leading-relaxed text-ink">
+        {lines
+          .filter((line) => line.trim())
+          .map((line, i) => (
+            <li key={i}>{renderInline(line.replace(/^[-*•]\s*/, ''), citations)}</li>
+          ))}
+      </ul>
     );
   }
 

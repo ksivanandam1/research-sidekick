@@ -122,18 +122,19 @@ export function ActiveClarifyingCard({
   );
 }
 
-/** Thread history for clarifying rounds (intro + answered pairs). */
-export function ClarifyingQuestions({
+/** Intro + answered clarifying pairs (no active question card). */
+export function ClarifyingHistory({
   clarifying,
-  onSelect,
-  showActiveCard = true,
-}: ClarifyingQuestionsProps) {
-  const { intro, questions, currentIndex, responses } = clarifying;
-  const active = currentIndex < questions.length ? questions[currentIndex] : null;
+  showIntro = true,
+}: {
+  clarifying: ClarifyingRound;
+  showIntro?: boolean;
+}) {
+  const { intro, questions, responses } = clarifying;
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm leading-relaxed text-ink">{intro}</p>
+      {showIntro && <p className="text-sm leading-relaxed text-ink">{intro}</p>}
 
       {responses.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -156,6 +157,22 @@ export function ClarifyingQuestions({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Thread history for clarifying rounds (intro + answered pairs). */
+export function ClarifyingQuestions({
+  clarifying,
+  onSelect,
+  showActiveCard = true,
+}: ClarifyingQuestionsProps) {
+  const { questions, currentIndex } = clarifying;
+  const active = currentIndex < questions.length ? questions[currentIndex] : null;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ClarifyingHistory clarifying={clarifying} />
 
       {showActiveCard && active && (
         <ActiveClarifyingCard
