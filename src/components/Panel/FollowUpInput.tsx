@@ -42,6 +42,15 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
 
   const showAttachSuggestions = showPrompts && turns.length === 0;
 
+  const latestTurn = turns[turns.length - 1] ?? null;
+  const answerFollowUps =
+    latestTurn?.stage === 'ready' &&
+    latestTurn.answer?.followUpPrompts &&
+    latestTurn.answer.followUpPrompts.length > 0
+      ? latestTurn.answer.followUpPrompts
+      : null;
+  const showAnswerFollowUps = showPrompts && !!answerFollowUps;
+
   const notifyTargetTurn = [...turns]
     .reverse()
     .find(
@@ -53,13 +62,15 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
         t.activePath.length === 0 &&
         !t.answer.generatedDocument &&
         !t.answer.dashboardAlert &&
+        !t.answer.nextStepQuestion &&
+        !(t.answer.followUpPrompts && t.answer.followUpPrompts.length > 0) &&
         !t.notifyConfirmed &&
         !t.notifyTrace &&
         !isNotifyFollowUp(t.question),
     );
-  const latestTurn = turns[turns.length - 1] ?? null;
   const showNotifyPrompts =
     showPrompts &&
+    !showAnswerFollowUps &&
     !!notifyTargetTurn &&
     notifyTargetTurn.id === latestTurn?.id &&
     notifyDismissedForTurn !== notifyTargetTurn.id;
@@ -121,6 +132,24 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
           >
             <span className="truncate">{NOTIFY_MAYA}</span>
           </button>
+        </div>
+      )}
+
+      {showAnswerFollowUps && answerFollowUps && (
+        <div
+          key="answer-follow-ups"
+          className="prompt-stack mb-2 flex flex-col items-end gap-1.5 overflow-hidden"
+        >
+          {answerFollowUps.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => handleSubmit(prompt)}
+              className={promptBtnClass}
+            >
+              <span className="truncate">{prompt}</span>
+            </button>
+          ))}
         </div>
       )}
 

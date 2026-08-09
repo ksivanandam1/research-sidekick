@@ -93,6 +93,7 @@ export function ConversationTurnCard({
     !turn.archived &&
     !turn.answer.generatedDocument &&
     !turn.answer.dashboardAlert &&
+    !turn.answer.nextStepQuestion &&
     !turn.notifyConfirmed &&
     !turn.notifyTrace &&
     !isNotifyFollowUp(turn.question);

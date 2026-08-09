@@ -551,6 +551,8 @@ export function getAllSourcesForAnswer(answer: Answer): Source[] {
 
 export function shouldStartClarifying(question: string): boolean {
   if (isNotifyFollowUp(question)) return false;
+  if (isDashboardInsightsQuestion(question)) return false;
+  if (isDraftReportQuestion(question)) return false;
   return /revenue|dip|miss|forecast|tier|channel|summarise|summarize|q3/i.test(question);
 }
 
@@ -561,6 +563,19 @@ export function isNotifyFollowUp(question: string): boolean {
 
 export function isDraftReportQuestion(question: string): boolean {
   return /draft an executive report/i.test(question.trim());
+}
+
+/** Empty-state / dashboard-level summary prompt (no chart attached). */
+export const DASHBOARD_INSIGHTS_PROMPT =
+  "Summarise the key insights and what's changed since last time";
+
+export function isDashboardInsightsQuestion(question: string): boolean {
+  const q = question.trim().toLowerCase();
+  return (
+    q === DASHBOARD_INSIGHTS_PROMPT.toLowerCase() ||
+    ((/summarise|summarize/.test(q) || /key insights/.test(q)) &&
+      /changed since last time/.test(q))
+  );
 }
 
 /** Side-panel reply after the user thumbs-up validates an assumption. */
@@ -614,14 +629,14 @@ export function resolveAssumptionConfirmAnswer(
 
   if (nextValidated.includes('revenue-a1')) {
     updatedBody = updatedBody.replace(
-      '3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
-      '3. Split Pro by channel and checked deal size — you confirmed the self-serve vs outbound mix did not shift enough to explain the miss. Volume is down, pricing is stable[4].',
+      '3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].',
+      '3. I split Pro by channel and checked deal size — you confirmed the self-serve vs outbound mix did not shift enough to explain the miss. Volume is down, pricing is stable[4].',
     );
   }
   if (nextValidated.includes('revenue-a2')) {
     updatedBody = updatedBody.replace(
-      '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.',
-      '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). You confirmed seasonality is not the driver — this looks like a real shift, not a cyclical dip.',
+      '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%) — the gap suggested partial seasonality, so I kept digging.',
+      '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%). You confirmed seasonality is not the driver — this looks like a real shift, not a cyclical dip.',
     );
   }
 
@@ -750,10 +765,10 @@ export const REVENUE_DIP_ANSWER: Answer = {
       '- Pipeline stage conversion for outbound-sourced Pro (activity data not accessible)',
       '- Whether competitor pressure, messaging, or territory coverage contributed to the miss',
     ].join('\n'),
-        '### Validation needed',
+    '### Validation needed',
     "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
     '### Proof points and evidence',
-    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggests partial seasonality.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
+    '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%) — the gap suggested partial seasonality, so I kept digging.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].',
     'We were able to diagnose the segment based on your tier and channel data.',
   ].join('\n\n'),
   pinSummary:
@@ -851,6 +866,60 @@ export const DRAFT_REPORT_ANSWER: Answer = {
       metricId: 'revenue',
       text: 'Outbound-sourced Pro new business is down roughly 50% QoQ.',
       sourceIds: ['srcSlackRevOps', 'srcSfdcPipeline'],
+    },
+  ],
+};
+
+export const DASHBOARD_INSIGHTS_ANSWER: Answer = {
+  confidence: 'medium',
+  summary: [
+    "Here's what's moved on company performance since last time — and where the story is concentrated.",
+    '---',
+    '## Revenue is the main change; margin holds while churn inches up',
+    [
+      '- **Revenue** is the standout shift: **$2.1M vs $2.4M forecast (−12%)**, concentrated in **outbound-sourced Pro** rather than a broad decline across tiers[1]',
+      '- **Gross margin** is essentially flat near **68%** — this is not a cost-structure story[2]',
+      '- **Churn** rose modestly to **4.1%**, mostly APAC enterprise budget exits — worth watching, but secondary to the revenue miss[3]',
+      '- **New ARR** and **active customers** are softer, consistent with fewer outbound Pro wins[4]',
+    ].join('\n'),
+    '### What changed since last period',
+    '1. Revenue swung from near-plan to a clear forecast miss — the largest QoQ movement on the board.\n2. The Pro outbound channel nearly halved; self-serve and other tiers stayed roughly flat.\n3. Churn ticked up without a matching product-complaint signal in the evidence trail.\n4. Margin stability suggests the issue is volume / conversion, not pricing or COGS.',
+    '### Validation needed',
+    'Dig into the outbound Pro miss, or validate what’s behind the churn uptick — both are available as follow-ups below.',
+    '### Proof points and evidence',
+    '1. I snapshotted every dashboard KPI against forecast and the prior period to see what actually moved[1].\n2. I ranked the variances by magnitude — revenue was the clear outlier, so I dug into tier and channel cuts next[1].\n3. I checked margin and churn in parallel to rule out a cost or retention-led story; margin held flat near 68%[2], while churn only edged up to 4.1%[3].\n4. I cross-checked New ARR and active customers — both softened in line with fewer outbound Pro wins, which reinforced the revenue diagnosis[4].',
+  ].join('\n\n'),
+  pinSummary:
+    'Since last time: revenue missed forecast (−12%) in outbound Pro; margin held; churn edged up.',
+  nextStepQuestion: "Is there a particular metric that you'd like to investigate further?",
+  findings: [
+    {
+      id: 'dash-e1',
+      kind: 'evidence',
+      metricId: 'revenue',
+      text: 'Q3 revenue was $2.1M versus a $2.4M forecast (−12%), with the miss concentrated in outbound-sourced Pro.',
+      sourceIds: ['srcFinanceRevenue', 'srcSfdcPipeline'],
+    },
+    {
+      id: 'dash-e2',
+      kind: 'evidence',
+      metricId: 'grossMargin',
+      text: 'Gross margin held near 68% quarter on quarter.',
+      sourceIds: ['srcFinanceRevenue'],
+    },
+    {
+      id: 'dash-e3',
+      kind: 'evidence',
+      metricId: 'churn',
+      text: 'Churn rose to 4.1%, concentrated in APAC enterprise budget-driven exits.',
+      sourceIds: ['srcSfdcChurn'],
+    },
+    {
+      id: 'dash-e4',
+      kind: 'evidence',
+      metricId: 'newArr',
+      text: 'New ARR softened in line with fewer outbound Pro closed-won deals.',
+      sourceIds: ['srcSfdcPipeline'],
     },
   ],
 };
@@ -1026,10 +1095,10 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
         '- Pipeline stage conversion for outbound-sourced Pro (activity data not accessible)',
         '- Whether competitor pressure, messaging, or territory coverage contributed to the miss',
       ].join('\n'),
-            '### Validation needed',
+      '### Validation needed',
       "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
       '### Proof points and evidence',
-      "1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. Broke revenue down by tier. Only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].",
+      "1. I compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].",
       'We were able to diagnose the segment based on your tier and channel data.',
     ].join('\n\n'),
     pinSummary:

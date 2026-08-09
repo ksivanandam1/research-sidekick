@@ -8,10 +8,8 @@ interface GlobalHeaderProps {
 export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
   const { openPanel, attachedContext, panelOpen, panelUnread } = useResearch();
   const hasInvestigationContext = attachedContext.length > 0 || panelUnread;
-  const showResearchBadge =
-    !panelOpen && (attachedContext.length > 0 || panelUnread);
-  const researchBadgeCount =
-    attachedContext.length > 0 ? attachedContext.length : 1;
+  /** Dot only after a response is ready and the panel hasn't been opened yet. */
+  const showResearchBadge = !panelOpen && panelUnread;
 
   return (
     <header className="z-30 flex h-14 shrink-0 items-center gap-3 bg-ink px-3 text-surface">
@@ -57,9 +55,10 @@ export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
             <Sparkle size={12} strokeWidth={2.25} />
           </span>
           {showResearchBadge && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sage px-1 text-[9px] font-semibold text-white">
-              {researchBadgeCount}
-            </span>
+            <span
+              aria-hidden
+              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-sage ring-2 ring-ink"
+            />
           )}
         </button>
 

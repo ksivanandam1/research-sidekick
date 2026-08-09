@@ -1,6 +1,6 @@
 const VALIDATION_MARKER = '### Validation needed';
 
-/** Pulls the validation block out of the summary so it can render in "Your next best step". */
+/** Pulls the validation block out of the summary so it can render in "Suggested next steps". */
 export function splitValidationFromSummary(summary: string): {
   summaryBody: string;
   validationNeeded: string | null;

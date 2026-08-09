@@ -144,6 +144,10 @@ export interface Answer {
   pinSummary?: string;
   findings: Finding[];
   nextCheck?: string;
+  /** Suggested follow-up prompts shown as chips after the answer is ready. */
+  followUpPrompts?: string[];
+  /** Overrides the default notify question in Suggested next steps. */
+  nextStepQuestion?: string;
   /** Overall answer confidence shown as a badge on the response. */
   confidence?: Confidence;
   /** Optional interactive chart embedded in the chat response. */

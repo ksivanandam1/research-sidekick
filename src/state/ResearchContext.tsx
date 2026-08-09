@@ -13,6 +13,7 @@ import { isAssumptionContext, isChartContext } from '../types';
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
+  DASHBOARD_INSIGHTS_ANSWER,
   DRAFT_REPORT_ANSWER,
   REVENUE_DIP_ANSWER,
   buildRevenueClarifyingRound,
@@ -20,6 +21,7 @@ import {
   getContextItem,
   getKpi,
   isAssumptionConfirmQuestion,
+  isDashboardInsightsQuestion,
   isDraftReportQuestion,
   isNotifyFollowUp,
   resolveAnswer,
@@ -183,7 +185,10 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
           : (priorTurn?.contextItems ?? []);
       const chartItems = contextItems.filter(isChartContext);
       const assumptionItem = contextItems.find(isAssumptionContext);
-      const contextIds = chartItems.map((item) => item.id);
+      const contextIds =
+        chartItems.length > 0
+          ? chartItems.map((item) => item.id)
+          : (priorTurn?.usedContextIds ?? []);
       const usedContextIds = determineUsedContext(trimmed, contextIds);
 
       if (assumptionItem && isAssumptionConfirmQuestion(trimmed)) {
@@ -305,6 +310,30 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
           contextIds,
           contextItems,
           usedContextIds,
+          stage: 'analysing',
+          phase: 'diagnosing',
+          answer,
+          revealedFindingIds: [],
+          drillDowns: [],
+          activePath: [],
+        };
+        dispatch({ type: 'CREATE_TURN', turn });
+        startDiagnosisJob(turn.id, answer);
+        return;
+      }
+
+      if (isDashboardInsightsQuestion(trimmed)) {
+        const answer = DASHBOARD_INSIGHTS_ANSWER;
+        const dashboardContextIds: MetricId[] =
+          usedContextIds.length > 0
+            ? usedContextIds
+            : ['revenue', 'grossMargin', 'churn', 'newArr'];
+        const turn: ConversationTurn = {
+          id: nextId('turn'),
+          question: trimmed,
+          contextIds: dashboardContextIds,
+          contextItems,
+          usedContextIds: dashboardContextIds,
           stage: 'analysing',
           phase: 'diagnosing',
           answer,
