@@ -21,7 +21,7 @@ export function playResponseReadySound(): void {
   const master = ctx.createGain();
   master.connect(ctx.destination);
   master.gain.setValueAtTime(0.0001, start);
-  master.gain.exponentialRampToValueAtTime(0.12, start + 0.008);
+  master.gain.exponentialRampToValueAtTime(0.4, start + 0.008);
   master.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
 
   const audio = ctx;

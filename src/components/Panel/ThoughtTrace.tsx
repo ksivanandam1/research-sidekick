@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, ChevronDown, ChevronRight, CircleDashed, OctagonX } from 'lucide-react';
-import type { Answer, ClarifyingRound, Stage, TurnPhase } from '../../types';
-import { buildPipelineThoughtSteps } from '../../data/mockData';
+import { CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Lock, OctagonX } from 'lucide-react';
+import type { Answer, ClarifyingRound, Source, Stage, TurnPhase } from '../../types';
+import { buildPipelineThoughtSteps, getAllSourcesForAnswer } from '../../data/mockData';
 import { getStepStatusForThoughtTrace } from '../../utils/thoughtTraceTitle';
 import { ClarifyingHistory } from './ClarifyingQuestions';
 import { MoonLoader } from './MoonLoader';
+import { SourceIcon, SOURCE_PLATFORM } from './SourceIcon';
 
 const EMPTY_ANSWER: Answer = { summary: '', findings: [] };
 
@@ -23,6 +24,32 @@ function StatusIcon({ status }: { status: StepStatus }) {
   if (status === 'running') return <MoonLoader size={14} className="mt-0.5 shrink-0" />;
   if (status === 'stopped') return <OctagonX size={14} className="mt-0.5 shrink-0 text-terracotta" />;
   return <CircleDashed size={14} className="mt-0.5 shrink-0 text-ink-faint" />;
+}
+
+/** Citation sources as wrapping pills for the retrieving thought-trace step. */
+function SourcePills({ sources }: { sources: Source[] }) {
+  const uniqueByPlatform = sources.filter(
+    (source, index, list) => list.findIndex((s) => s.type === source.type) === index,
+  );
+  if (uniqueByPlatform.length === 0) return null;
+
+  return (
+    <div className="mt-0.5 flex flex-wrap gap-1.5">
+      {uniqueByPlatform.map((source) => (
+        <span
+          key={source.type}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border-soft bg-surface-soft px-2 py-0.5 text-[11px] font-medium text-ink-soft"
+        >
+          {source.restricted ? (
+            <Lock size={10} className="shrink-0" />
+          ) : (
+            <SourceIcon type={source.type} size={12} />
+          )}
+          {SOURCE_PLATFORM[source.type]}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function ThoughtStepRow({
@@ -93,12 +120,17 @@ export function ThoughtTrace({ stage, answer, stopped, clarifying, phase }: Thou
     }
   }, [isClarifyingPhase, stage]);
 
+  const resolvedAnswer = answer ?? EMPTY_ANSWER;
   const pipelineSteps = useMemo(
     () =>
-      buildPipelineThoughtSteps(answer ?? EMPTY_ANSWER, {
+      buildPipelineThoughtSteps(resolvedAnswer, {
         hasClarifyingRound: !!clarifying,
       }),
-    [answer, clarifying],
+    [resolvedAnswer, clarifying],
+  );
+  const citationSources = useMemo(
+    () => getAllSourcesForAnswer(resolvedAnswer),
+    [resolvedAnswer],
   );
   const performedActionsLabel = `Performed ${pipelineSteps.length} actions`;
 
@@ -181,16 +213,22 @@ export function ThoughtTrace({ stage, answer, stopped, clarifying, phase }: Thou
       <div className="flex flex-col gap-1.5 border-l border-border-soft pl-3">
         {visibleRows.map((row) => {
           const showClarifyingHistory = row.id === 'clarifying' && !!clarifying;
+          const showSourcePills =
+            row.id === 'retrieving' && citationSources.length > 0 && !showClarifyingHistory;
           return (
             <ThoughtStepRow
               key={row.id}
               label={row.label}
-              detail={showClarifyingHistory ? undefined : row.detail}
+              detail={showClarifyingHistory || showSourcePills ? undefined : row.detail}
               status={row.status}
               hideLabel={showClarifyingHistory && isClarifyingPhase}
               hideStatusIcon={showClarifyingHistory && isClarifyingPhase}
             >
-              {showClarifyingHistory ? <ClarifyingHistory clarifying={clarifying} /> : null}
+              {showClarifyingHistory ? (
+                <ClarifyingHistory clarifying={clarifying} />
+              ) : showSourcePills ? (
+                <SourcePills sources={citationSources} />
+              ) : null}
             </ThoughtStepRow>
           );
         })}
