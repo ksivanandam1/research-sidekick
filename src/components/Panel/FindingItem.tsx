@@ -26,6 +26,12 @@ export function FindingItem({
 
   return (
     <div className="rounded-xl border border-border-soft bg-surface p-3">
+      {finding.kind === 'assumption' && (
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+          Assumption
+        </p>
+      )}
+
       {showMetricTag && (
         <div className="mb-1.5 flex items-center gap-2">
           <span className="text-[11px] font-medium text-ink-faint">{getKpi(finding.metricId).title}</span>

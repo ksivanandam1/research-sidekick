@@ -1,5 +1,15 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Copy, RotateCcw, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  ChevronDown,
+  ChevronUp,
+  CircleHelp,
+  Copy,
+  RotateCcw,
+  Square,
+  ThumbsDown,
+  ThumbsUp,
+  Volume2,
+} from 'lucide-react';
 import type {
   Answer,
   ConversationTurn,
@@ -20,6 +30,7 @@ import { DashboardAlertCard } from './DashboardAlertCard';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ResponseFeedbackModal } from './ResponseFeedbackModal';
 import { ThoughtTrace } from './ThoughtTrace';
+import { readAloud, stopReadAloud, toSpeechText } from '../../utils/readAloud';
 import { splitUnknownsFromSummary, splitValidationFromSummary } from '../../utils/summarySections';
 
 interface AnswerSectionProps {
@@ -69,6 +80,8 @@ interface FindingGroupProps {
   showMetricTags: boolean;
   onReply?: (finding: Finding) => void;
   validatedAssumptionIds?: string[];
+  /** Red help icon + stronger label treatment for attention. */
+  attention?: boolean;
 }
 
 function FindingGroup({
@@ -78,6 +91,7 @@ function FindingGroup({
   showMetricTags,
   onReply,
   validatedAssumptionIds = [],
+  attention = false,
 }: FindingGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -88,13 +102,20 @@ function FindingGroup({
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-center justify-between gap-2 rounded-lg px-0.5 py-0.5 text-left transition-colors hover:bg-surface-soft"
       >
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-          {heading} · {findings.length}
+        <span
+          className={`inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${
+            attention ? 'text-terracotta' : 'text-ink-faint'
+          }`}
+        >
+          {attention && <CircleHelp size={14} strokeWidth={2.25} className="shrink-0 text-terracotta" />}
+          <span className="truncate">
+            {heading} · {findings.length}
+          </span>
         </span>
         {expanded ? (
-          <ChevronUp size={13} className="shrink-0 text-ink-faint" />
+          <ChevronUp size={13} className={`shrink-0 ${attention ? 'text-terracotta' : 'text-ink-faint'}`} />
         ) : (
-          <ChevronDown size={13} className="shrink-0 text-ink-faint" />
+          <ChevronDown size={13} className={`shrink-0 ${attention ? 'text-terracotta' : 'text-ink-faint'}`} />
         )}
       </button>
       {expanded && (
@@ -186,6 +207,7 @@ export function AnswerSection({
   const { showToast, submitQuestion } = useResearch();
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [isReadingAloud, setIsReadingAloud] = useState(false);
   const { summaryBody: withoutValidation, validationNeeded } = splitValidationFromSummary(
     answer.summary,
   );
@@ -208,26 +230,33 @@ export function AnswerSection({
       ? 'high'
       : answer.confidence;
 
+  useEffect(() => {
+    return () => {
+      stopReadAloud();
+    };
+  }, []);
+
   function handleReview() {
     if (!turn) return;
     setReviewOpen(true);
   }
 
   function handleReadAloud() {
-    if (!('speechSynthesis' in window)) {
-      showToast('Read aloud is not supported in this browser.');
+    if (isReadingAloud) {
+      stopReadAloud();
+      setIsReadingAloud(false);
       return;
     }
-    window.speechSynthesis.cancel();
-    const plain = answer.summary
-      .replace(/^#+\s+/gm, '')
-      .replace(/\*\*/g, '')
-      .replace(/\[\d+\]/g, '')
-      .replace(/^>>>\s+/gm, '')
-      .replace(/---/g, '')
-      .trim();
-    const utterance = new SpeechSynthesisUtterance(plain);
-    window.speechSynthesis.speak(utterance);
+    try {
+      // Speak the visible agent response (summary body), not pulled-out next-steps/unknowns.
+      setIsReadingAloud(true);
+      readAloud(toSpeechText(summaryBody), {
+        onEnd: () => setIsReadingAloud(false),
+      });
+    } catch {
+      setIsReadingAloud(false);
+      showToast('Read aloud is not supported in this browser.');
+    }
   }
 
   function handleRetry() {
@@ -285,6 +314,7 @@ export function AnswerSection({
           showMetricTags={showMetricTags}
           onReply={archived ? undefined : onReply}
           validatedAssumptionIds={validatedAssumptionIds}
+          attention
         />
       )}
 
@@ -340,11 +370,11 @@ export function AnswerSection({
                   <button
                     type="button"
                     onClick={handleReadAloud}
-                    title="Read aloud"
-                    aria-label="Read aloud"
+                    title={isReadingAloud ? 'Stop reading' : 'Read aloud'}
+                    aria-label={isReadingAloud ? 'Stop reading' : 'Read aloud'}
                     className={iconActionBtn}
                   >
-                    <Volume2 size={14} />
+                    {isReadingAloud ? <Square size={12} fill="currentColor" /> : <Volume2 size={14} />}
                   </button>
                   <button
                     type="button"

@@ -429,13 +429,12 @@ function buildRetrievalDetail(answer: Answer): string {
 function buildLinkingDetail(answer: Answer): string {
   const evidence = answer.findings.filter((f) => f.kind === 'evidence' && f.sourceIds.length > 0);
   if (evidence.length === 0) {
-    return 'Cross-checked figures against available source reports.';
+    return 'Linked insight figures back to their source reports.';
   }
-  const linked = evidence.slice(0, 3).map((f) => {
-    const source = getSource(f.sourceIds[0]);
-    return `${source.name.split('(')[0].trim()} supports "${f.text.split('.')[0]}"`;
-  });
-  return linked.join('. ') + '.';
+  const count = evidence.length;
+  return count === 1
+    ? 'Linked the key insight figure back to its source report for citation.'
+    : `Linked ${count} insight figures back to their source reports for citation.`;
 }
 
 function defaultAnalysingDetail(answer: Answer): string {
@@ -497,11 +496,9 @@ export function buildPipelineThoughtSteps(
       ? 'Queried Xero revenue, SFDC tier and pipeline views, and RevOps notes on outbound Pro.'
       : retrievedDetailRaw;
 
-  const linkingDetail =
-    isRevenueQ3 &&
-    linkingDetailRaw === 'Cross-checked figures against available source reports.'
-      ? 'Linked the $2.1M vs $2.4M miss, tier split, and channel cut to Finance, SFDC, and RevOps sources.'
-      : linkingDetailRaw;
+  const linkingDetail = isRevenueQ3
+    ? 'Linked the forecast miss, tier split, and outbound channel cut back to their source reports.'
+    : linkingDetailRaw;
 
   const detailById: Record<string, string> = {
     clarifying: clarifyingDetail,
