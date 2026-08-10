@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Folder, Lock } from 'lucide-react';
 import type { Finding } from '../../types';
 import { getSource } from '../../data/mockData';
+import { useResearch } from '../../state/ResearchContext';
 import { SourceIcon, hidesExcerptSummary } from './SourceIcon';
 
 const CLOSE_DELAY_MS = 200;
@@ -14,6 +15,7 @@ interface InlineCitationProps {
 }
 
 export function InlineCitation({ number, finding }: InlineCitationProps) {
+  const { showToast } = useResearch();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [excerptIndex, setExcerptIndex] = useState(0);
@@ -88,6 +90,7 @@ export function InlineCitation({ number, finding }: InlineCitationProps) {
         onMouseEnter={show}
         onMouseLeave={scheduleHide}
         onFocus={show}
+        onClick={() => showToast('opening external link')}
         className="mx-0.5 inline-flex h-4 min-w-4 translate-y-[-1px] items-center justify-center rounded-full bg-ocean-soft px-1 align-baseline text-[10px] font-semibold leading-none text-ocean underline-offset-2 transition-colors hover:bg-ocean hover:text-surface group-hover:underline"
       >
         {number}

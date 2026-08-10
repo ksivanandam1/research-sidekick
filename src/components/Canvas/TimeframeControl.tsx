@@ -150,7 +150,10 @@ export function TimeframeControl({ value, onChange }: TimeframeControlProps) {
   const customLabel = isQuarter ? 'Custom' : formatTimeframeLabel(value);
 
   return (
-    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Timeframe">
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby="timeframe-label">
+      <span id="timeframe-label" className="text-xs font-medium text-ink-soft">
+        Timeframe
+      </span>
       <button
         type="button"
         onClick={selectThisQuarter}

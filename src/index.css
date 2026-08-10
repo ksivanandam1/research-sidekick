@@ -204,9 +204,10 @@ body {
 
 .alert-bell-icon {
   transform-origin: 50% 0%;
-  animation: alert-bell-ring 720ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
+/* Ring only while the alert card is hovered — removing the animation on mouseleave
+   lets the next hover restart it cleanly. */
 .group:hover .alert-bell-icon {
   animation: alert-bell-ring 560ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }

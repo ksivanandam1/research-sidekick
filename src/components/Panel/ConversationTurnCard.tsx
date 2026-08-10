@@ -103,7 +103,7 @@ export function ConversationTurnCard({
   if (collapseToPin && pinHeadline && turn.answer) {
     return (
       <div className="flex flex-col gap-3">
-        <UserQuery turn={turn} />
+        {!turn.proactive && <UserQuery turn={turn} />}
         <PinnedInsight
           key={`pin-b-${pinTrigger}-${turn.id}`}
           headline={pinHeadline}
@@ -116,7 +116,7 @@ export function ConversationTurnCard({
 
   return (
     <div className="flex flex-col gap-3">
-      <UserQuery turn={turn} />
+      {!turn.proactive && <UserQuery turn={turn} />}
 
       {showThoughtTrace && (
         <ThoughtTrace

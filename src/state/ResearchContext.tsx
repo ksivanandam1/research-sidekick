@@ -16,8 +16,9 @@ import { initialSessionState, researchReducer } from './researchReducer';
 import {
   DASHBOARD_INSIGHTS_ANSWER,
   DRAFT_REPORT_ANSWER,
-  REVENUE_DIP_ANSWER,
+  PROACTIVE_DASHBOARD_ANSWER,
   buildRevenueClarifyingRound,
+  buildRevenueDipAnswerFromClarifying,
   determineUsedContext,
   getContextItem,
   getKpi,
@@ -70,6 +71,8 @@ interface ResearchContextValue {
     question: string,
     options?: { contextItems?: AttachedContextItem[] },
   ) => void;
+  /** Background proactive nudge — no user bubble; panel stays closed until opened. */
+  startProactiveDashboardDemo: () => void;
   submitQuestionForMetric: (
     metricId: MetricId,
     question: string,
@@ -84,14 +87,30 @@ interface ResearchContextValue {
   requestChangeNotifications: (topic: string, metricIds?: MetricId[]) => void;
   showToast: (message: string) => void;
   dismissToast: () => void;
+  /** True while a staged agent job is in flight (not waiting on clarifying input). */
+  isAgentRunning: boolean;
+  agentPaused: boolean;
+  toggleAgentPlayback: () => void;
 }
 
 const ResearchContext = createContext<ResearchContextValue | null>(null);
 
 export function ResearchProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(researchReducer, initialSessionState);
-  const { runAnswerJob, runAssumptionValidationJob, cancelRun } = useAgentRun();
+  const {
+    runAnswerJob,
+    runAssumptionValidationJob,
+    cancelRun,
+    toggleAgentPlayback,
+    agentPaused,
+  } = useAgentRun();
   const pendingTimeoutsRef = useRef<Map<string, number>>(new Map());
+
+  const isAgentRunning = state.turns.some((turn) => {
+    if (turn.stopped) return false;
+    if (turn.notifyTrace && turn.notifyTrace.stage !== 'ready') return true;
+    return turn.stage !== 'ready' && turn.stage !== 'idle';
+  });
 
   const showToast = useCallback((message: string) => dispatch({ type: 'SHOW_TOAST', message }), []);
   const dismissToast = useCallback(() => dispatch({ type: 'DISMISS_TOAST' }), []);
@@ -191,6 +210,28 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
     }, 1400);
     pendingTimeoutsRef.current.set(turnId, timeoutId);
   }, []);
+
+  const startProactiveDashboardDemo = useCallback(() => {
+    const answer = PROACTIVE_DASHBOARD_ANSWER;
+    const dashboardContextIds: MetricId[] = ['revenue', 'grossMargin', 'churn', 'newArr'];
+    const turn: ConversationTurn = {
+      id: nextId('turn'),
+      // Internal label for chat title / history only — bubble is hidden via `proactive`.
+      question: 'Key highlights since last visit',
+      contextIds: dashboardContextIds,
+      contextItems: [],
+      usedContextIds: dashboardContextIds,
+      stage: 'analysing',
+      phase: 'diagnosing',
+      answer,
+      revealedFindingIds: [],
+      drillDowns: [],
+      activePath: [],
+      proactive: true,
+    };
+    dispatch({ type: 'CREATE_TURN', turn });
+    startDiagnosisJob(turn.id, answer);
+  }, [startDiagnosisJob]);
 
   const submitQuestion = useCallback(
     (question: string, options?: { contextItems?: AttachedContextItem[] }) => {
@@ -437,16 +478,22 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       const label = customLabel?.trim() || option.label;
       if (optionId === 'other' && !customLabel?.trim()) return;
 
+      const response = { questionId: question.id, optionId: option.id, label };
       const isLast = turn.clarifying.currentIndex >= turn.clarifying.questions.length - 1;
       dispatch({
         type: 'RECORD_CLARIFYING_RESPONSE',
         turnId,
-        response: { questionId: question.id, optionId: option.id, label },
+        response,
       });
 
       if (isLast) {
-        dispatch({ type: 'BEGIN_DIAGNOSIS', turnId, answer: REVENUE_DIP_ANSWER });
-        startDiagnosisJob(turnId, REVENUE_DIP_ANSWER);
+        const responses = [...turn.clarifying.responses, response];
+        const answer = buildRevenueDipAnswerFromClarifying(
+          turn.clarifying.questions,
+          responses,
+        );
+        dispatch({ type: 'BEGIN_DIAGNOSIS', turnId, answer });
+        startDiagnosisJob(turnId, answer);
       }
     },
     [state.turns, startDiagnosisJob],
@@ -536,6 +583,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       selectChat,
       consumePrefill,
       submitQuestion,
+      startProactiveDashboardDemo,
       submitQuestionForMetric,
       answerClarifying,
       reopenPath,
@@ -546,6 +594,9 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       requestChangeNotifications,
       showToast,
       dismissToast,
+      isAgentRunning,
+      agentPaused,
+      toggleAgentPlayback,
     }),
     [
       state,
@@ -559,6 +610,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       consumePrefill,
       setPinTrigger,
       submitQuestion,
+      startProactiveDashboardDemo,
       submitQuestionForMetric,
       answerClarifying,
       reopenPath,
@@ -569,6 +621,9 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       requestChangeNotifications,
       showToast,
       dismissToast,
+      isAgentRunning,
+      agentPaused,
+      toggleAgentPlayback,
     ],
   );
 

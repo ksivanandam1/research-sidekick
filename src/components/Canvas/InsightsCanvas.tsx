@@ -31,15 +31,23 @@ const KPI_TOOLTIPS: Record<MetricId, string> = {
 const ROW_ONE: MetricId[] = ['revenue', 'activeCustomers', 'churn'];
 const ROW_TWO: MetricId[] = ['grossMargin', 'newArr'];
 
-const MORE_OPTIONS: { id: string; label: string; badge?: number; toast: string }[] = [
+type MoreOption = {
+  id: string;
+  label: string;
+  badge?: number;
+  /** Omitted for actions that don't show a toast (e.g. proactive demo). */
+  toast?: string;
+};
+
+const MORE_OPTIONS: MoreOption[] = [
   { id: 'refresh', label: 'Refresh data', toast: 'Dashboard data refreshed.' },
   { id: 'customize', label: 'Customize layout', toast: 'Layout editor coming soon.' },
   { id: 'alerts', label: 'Manage alerts', badge: 2, toast: 'Opening alert settings…' },
   { id: 'schedule', label: 'Schedule report', toast: 'Report scheduling coming soon.' },
-  { id: 'duplicate', label: 'Duplicate dashboard', toast: 'Dashboard duplicated.' },
+  { id: 'proactiveDemo', label: 'Proactive dashboard demo' },
 ];
 
-function MoreOptionsMenu({ onSelect }: { onSelect: (toast: string) => void }) {
+function MoreOptionsMenu({ onSelect }: { onSelect: (option: MoreOption) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -83,7 +91,7 @@ function MoreOptionsMenu({ onSelect }: { onSelect: (toast: string) => void }) {
               type="button"
               role="menuitem"
               onClick={() => {
-                onSelect(opt.toast);
+                onSelect(opt);
                 setOpen(false);
               }}
               className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left text-xs text-ink-soft transition-colors hover:bg-surface-soft hover:text-ink"
@@ -103,7 +111,14 @@ function MoreOptionsMenu({ onSelect }: { onSelect: (toast: string) => void }) {
 }
 
 export function InsightsCanvas() {
-  const { attachedContext, addContext, removeContext, showToast } = useResearch();
+  const {
+    attachedContext,
+    addContext,
+    removeContext,
+    showToast,
+    closePanel,
+    startProactiveDashboardDemo,
+  } = useResearch();
   const [timeframe, setTimeframe] = useState<TimeframeSelection>(DEFAULT_TIMEFRAME);
   const [product, setProduct] = useState<ProductFilterId>(DEFAULT_PRODUCT);
 
@@ -139,6 +154,17 @@ export function InsightsCanvas() {
     showToast('Copied — ready to share.');
   }
 
+  function handleMoreOption(option: MoreOption) {
+    if (option.id === 'proactiveDemo') {
+      // Keep the panel closed so the sidekick badge can nudge the user when ready.
+      // Session-only — a refresh clears turns / unread and returns to the default experience.
+      closePanel();
+      startProactiveDashboardDemo();
+      return;
+    }
+    if (option.toast) showToast(option.toast);
+  }
+
   return (
     <div className="relative mx-auto max-w-6xl px-4 pb-32 pt-8 sm:px-8">
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
@@ -153,7 +179,7 @@ export function InsightsCanvas() {
             <Upload size={13} />
             Export
           </button>
-          <MoreOptionsMenu onSelect={showToast} />
+          <MoreOptionsMenu onSelect={handleMoreOption} />
         </div>
       </header>
 

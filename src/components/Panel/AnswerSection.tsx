@@ -100,7 +100,11 @@ function FindingGroup({
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-0.5 py-0.5 text-left transition-colors hover:bg-surface-soft"
+        className={`flex w-full items-center justify-between gap-2 rounded-lg text-left transition-colors ${
+          attention
+            ? 'bg-terracotta-soft px-2 py-1.5 hover:bg-terracotta-soft/80'
+            : 'px-0.5 py-0.5 hover:bg-surface-soft'
+        }`}
       >
         <span
           className={`inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${

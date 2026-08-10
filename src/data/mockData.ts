@@ -1,5 +1,7 @@
 import type {
   Answer,
+  ClarifyingQuestion,
+  ClarifyingResponse,
   ClarifyingRound,
   ContextChartKind,
   ContextId,
@@ -700,6 +702,8 @@ export function resolveNotifyFollowUp(question: string, metricTitle = 'Revenue')
   };
 }
 
+const UNSURE_OPTION = { id: 'unsure', label: "I'm not sure" } as const;
+
 export function buildRevenueClarifyingRound(): ClarifyingRound {
   return {
     intro: "Before I diagnose the Q3 dip, a few quick checks so I don't make false assumptions:",
@@ -713,7 +717,7 @@ export function buildRevenueClarifyingRound(): ClarifyingRound {
         options: [
           { id: 'no', label: 'No one-offs, revenue is steady' },
           { id: 'yes', label: 'Yes, there were some' },
-          { id: 'unsure', label: 'Not sure, check billing data' },
+          UNSURE_OPTION,
           { id: 'other', label: 'Something else' },
         ],
       },
@@ -725,6 +729,7 @@ export function buildRevenueClarifyingRound(): ClarifyingRound {
           { id: 'bottomUp', label: 'Bottom-up from pipeline' },
           { id: 'topDown', label: 'Top-down growth target' },
           { id: 'mix', label: 'Mix of both' },
+          UNSURE_OPTION,
           { id: 'other', label: 'Something else' },
         ],
       },
@@ -735,6 +740,7 @@ export function buildRevenueClarifyingRound(): ClarifyingRound {
         options: [
           { id: 'no', label: 'No churn, accounts held' },
           { id: 'yes', label: 'Yes, some churned' },
+          UNSURE_OPTION,
           { id: 'other', label: 'Something else' },
         ],
       },
@@ -745,10 +751,39 @@ export function buildRevenueClarifyingRound(): ClarifyingRound {
         options: [
           { id: 'no', label: 'No changes' },
           { id: 'yes', label: 'Yes, something changed' },
+          UNSURE_OPTION,
           { id: 'other', label: 'Something else' },
         ],
       },
     ],
+  };
+}
+
+/** Turn "I'm not sure" clarifying answers into Requires clarification assumptions. */
+export function buildRevenueDipAnswerFromClarifying(
+  questions: ClarifyingQuestion[],
+  responses: ClarifyingResponse[],
+): Answer {
+  const unsureAssumptions: Finding[] = responses
+    .filter((response) => response.optionId === 'unsure')
+    .map((response) => {
+      const question = questions.find((item) => item.id === response.questionId);
+      const why = question?.why?.replace(/\.$/, '') ?? 'This clarifying check';
+      return {
+        id: `revenue-clarifying-unsure-${response.questionId}`,
+        kind: 'assumption' as const,
+        metricId: 'revenue' as const,
+        text: `${why} — still unconfirmed (you weren't sure).`,
+        confidence: 'low' as const,
+        sourceIds: [],
+      };
+    });
+
+  if (unsureAssumptions.length === 0) return REVENUE_DIP_ANSWER;
+
+  return {
+    ...REVENUE_DIP_ANSWER,
+    findings: [...REVENUE_DIP_ANSWER.findings, ...unsureAssumptions],
   };
 }
 
@@ -916,6 +951,61 @@ export const DASHBOARD_INSIGHTS_ANSWER: Answer = {
     },
     {
       id: 'dash-e4',
+      kind: 'evidence',
+      metricId: 'newArr',
+      text: 'New ARR softened in line with fewer outbound Pro closed-won deals.',
+      sourceIds: ['srcSfdcPipeline'],
+    },
+  ],
+};
+
+/** Proactive nudge when the user returns to the dashboard (no user query bubble). */
+export const PROACTIVE_DASHBOARD_ANSWER: Answer = {
+  // No confidence badge — this is a welcome-back brief, not a scored diagnosis.
+  summary: [
+    "Welcome back — I've summarised a few of the key highlights since you last viewed this dashboard. Treat this as a pointer to where the board moved most, not a full root-cause read yet.",
+    '---',
+    '## What changed since you last looked',
+    [
+      '- **Revenue** is the clearest movement: **$2.1M vs $2.4M forecast (−12%)**, concentrated in **outbound-sourced Pro** rather than a broad decline across tiers[1]',
+      '- **Holding steady:** Gross margin stayed near **68%**, which suggests volume / conversion rather than a cost-structure problem[2]',
+      '- **Worth watching:** Churn edged up to **4.1%**, mostly APAC enterprise budget exits — secondary to the revenue miss, but not noise[3]',
+      '- **New ARR** and **active customers** softened in line with fewer outbound Pro wins[4]',
+    ].join('\n'),
+    '### Key highlights',
+    '1. The largest swing on the board is the revenue forecast miss — and it is concentrated, not company-wide.\n2. Margin stability is useful context: the story so far looks closer to fewer Pro outbound deals closing than to pricing or COGS pressure.\n3. Starter and Growth look comparatively flat, which narrows attention to the Pro outbound channel.',
+    '### Areas to improve or dig into',
+    '1. Outbound-sourced Pro new business nearly halved QoQ — that volume drop is the main place I would start.\n2. The churn uptick deserves a careful check so it does not get dismissed as seasonal noise.\n3. If you want a deeper diagnosis, we can investigate a metric below — I have not assumed a single cause yet.',
+    '### Proof points and evidence',
+    '1. I compared every KPI to forecast and the prior period to see what actually moved[1].\n2. Revenue was the largest variance, so I checked tier and channel cuts next — outbound Pro stood out[1].\n3. Margin held near 68% while churn only edged to 4.1%, which kept the focus on conversion volume rather than cost or retention as the primary story[2][3].\n4. Softer New ARR and active-customer growth lined up with fewer outbound Pro closed-won deals[4].',
+  ].join('\n\n'),
+  pinSummary:
+    'Welcome back: revenue missed plan (−12%) in outbound Pro; margin held; churn edged up.',
+  nextStepQuestion: "Is there a particular metric that you'd like to investigate further?",
+  findings: [
+    {
+      id: 'proactive-e1',
+      kind: 'evidence',
+      metricId: 'revenue',
+      text: 'Q3 revenue was $2.1M versus a $2.4M forecast (−12%), with the miss concentrated in outbound-sourced Pro.',
+      sourceIds: ['srcFinanceRevenue', 'srcSfdcPipeline'],
+    },
+    {
+      id: 'proactive-e2',
+      kind: 'evidence',
+      metricId: 'grossMargin',
+      text: 'Gross margin held near 68% quarter on quarter.',
+      sourceIds: ['srcFinanceRevenue'],
+    },
+    {
+      id: 'proactive-e3',
+      kind: 'evidence',
+      metricId: 'churn',
+      text: 'Churn rose to 4.1%, concentrated in APAC enterprise budget-driven exits.',
+      sourceIds: ['srcSfdcChurn'],
+    },
+    {
+      id: 'proactive-e4',
       kind: 'evidence',
       metricId: 'newArr',
       text: 'New ARR softened in line with fewer outbound Pro closed-won deals.',

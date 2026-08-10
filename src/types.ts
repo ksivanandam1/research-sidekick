@@ -242,6 +242,11 @@ export interface ConversationTurn {
   /** In-progress or completed alert setup on this turn (does not create a new version). */
   notifyTrace?: NotifyTrace;
   notifyConfirmed?: boolean;
+  /**
+   * Proactive sidekick nudge (no user-authored query). Hides the user bubble;
+   * session-only — cleared on refresh.
+   */
+  proactive?: boolean;
 }
 
 export interface NotifyTrace {

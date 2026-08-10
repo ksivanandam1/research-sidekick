@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { BarChart3, Compass, LayoutGrid, Settings } from 'lucide-react';
+import { BarChart3, Compass, LayoutGrid, Pause, Play, Settings } from 'lucide-react';
+import { useResearch } from '../../state/ResearchContext';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutGrid, active: true },
@@ -19,6 +20,10 @@ interface SidebarProps {
 
 export function Sidebar({ forceCollapsed = false, collapsed: userCollapsed }: SidebarProps) {
   const collapsed = forceCollapsed || userCollapsed;
+  const { isAgentRunning, agentPaused, toggleAgentPlayback } = useResearch();
+  const playbackEnabled = isAgentRunning || agentPaused;
+  const PlaybackIcon = agentPaused ? Play : Pause;
+  const playbackLabel = agentPaused ? 'Resume agent response' : 'Pause agent response';
 
   return (
     <>
@@ -45,6 +50,27 @@ export function Sidebar({ forceCollapsed = false, collapsed: userCollapsed }: Si
               {!collapsed && label}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={toggleAgentPlayback}
+            disabled={!playbackEnabled}
+            title={playbackLabel}
+            aria-label={playbackLabel}
+            aria-pressed={agentPaused}
+            className={`mt-auto flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors ${
+              collapsed ? 'justify-center' : ''
+            } ${
+              playbackEnabled
+                ? agentPaused
+                  ? 'bg-sage-soft font-medium text-sage hover:opacity-90'
+                  : 'text-ink-soft hover:bg-surface-soft hover:text-ink'
+                : 'cursor-default text-ink-faint opacity-40'
+            }`}
+          >
+            <PlaybackIcon size={16} strokeWidth={2} className="shrink-0" />
+            {!collapsed && (agentPaused ? 'Resume' : 'Pause')}
+          </button>
         </nav>
 
         <div
@@ -54,7 +80,7 @@ export function Sidebar({ forceCollapsed = false, collapsed: userCollapsed }: Si
           }`}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sage-soft text-xs font-semibold text-sage">
-            RA
+            SK
           </div>
           {!collapsed && (
             <div className="min-w-0 leading-tight">

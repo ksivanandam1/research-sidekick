@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Stage } from '../types';
 import {
   ensureNotificationPermission,
@@ -21,6 +21,7 @@ const STAGE_DELAY_MS: Record<Stage, number> = {
 const STEP_STAGGER_MS = 2000;
 
 const REVISION_DELAY_MS = 1400;
+const PAUSE_POLL_MS = 50;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -56,87 +57,159 @@ const ASSUMPTION_VALIDATION_STAGE_DELAY_MS: Partial<Record<Stage, number>> = {
  */
 export function useAgentRun() {
   const cancelledRef = useRef(false);
+  const pausedRef = useRef(false);
+  const [agentPaused, setAgentPaused] = useState(false);
 
   useEffect(() => {
     // Reset on (re)mount so React 19 StrictMode's dev-only mount -> cleanup ->
     // remount cycle doesn't leave every subsequent run permanently cancelled.
     cancelledRef.current = false;
+    pausedRef.current = false;
     return () => {
       cancelledRef.current = true;
     };
   }, []);
 
-  const runAnswerJob = useCallback(async (args: RunAnswerJobArgs) => {
-    cancelledRef.current = false;
-    const { evidenceFindingIds, otherFindingIds, responseBody, onStage, onFindingsRevealed } =
-      args;
-    const cancelled = () => cancelledRef.current;
-
-    // Await so Allow/Deny settles before stages run (avoids ready racing the prompt).
-    await ensureNotificationPermission();
-
-    onStage('analysing');
-    await sleep(STAGE_DELAY_MS.analysing);
-    if (cancelled()) return;
-
-    onStage('retrieving');
-    await sleep(STAGE_DELAY_MS.retrieving);
-    if (cancelled()) return;
-
-    onStage('citing');
-    if (evidenceFindingIds.length === 0) {
-      await sleep(STEP_STAGGER_MS);
-      if (cancelled()) return;
-    } else {
-      for (let i = 0; i < evidenceFindingIds.length; i += 1) {
-        onFindingsRevealed(evidenceFindingIds.slice(0, i + 1));
-        await sleep(STEP_STAGGER_MS);
-        if (cancelled()) return;
-      }
+  const waitWhilePaused = useCallback(async () => {
+    while (pausedRef.current) {
+      if (cancelledRef.current) return;
+      await sleep(PAUSE_POLL_MS);
     }
-
-    onStage('drafting');
-    onFindingsRevealed([...evidenceFindingIds, ...otherFindingIds]);
-    await sleep(STAGE_DELAY_MS.drafting);
-    if (cancelled()) return;
-
-    onStage('linking');
-    await sleep(STAGE_DELAY_MS.linking);
-    if (cancelled()) return;
-
-    onStage('ready');
-    playResponseReadySound();
-    notifyResponseReady({ body: responseBody });
   }, []);
 
-  const runRevisionJob = useCallback(async (args: RunRevisionJobArgs) => {
+  /** Sleep that freezes while the run is paused and aborts if cancelled. */
+  const sleepInterruptible = useCallback(
+    async (ms: number) => {
+      const end = Date.now() + ms;
+      while (Date.now() < end) {
+        if (cancelledRef.current) return;
+        await waitWhilePaused();
+        if (cancelledRef.current) return;
+        const remaining = end - Date.now();
+        if (remaining <= 0) return;
+        await sleep(Math.min(PAUSE_POLL_MS, remaining));
+      }
+    },
+    [waitWhilePaused],
+  );
+
+  const beginRun = useCallback(() => {
     cancelledRef.current = false;
-    const { onStart, onDone } = args;
-    onStart();
-    await sleep(REVISION_DELAY_MS);
-    if (cancelledRef.current) return;
-    onDone();
+    pausedRef.current = false;
+    setAgentPaused(false);
   }, []);
 
-  const runAssumptionValidationJob = useCallback(async (args: RunAssumptionValidationJobArgs) => {
-    cancelledRef.current = false;
-    const { onStage } = args;
-    const cancelled = () => cancelledRef.current;
+  const runAnswerJob = useCallback(
+    async (args: RunAnswerJobArgs) => {
+      beginRun();
+      const { evidenceFindingIds, otherFindingIds, responseBody, onStage, onFindingsRevealed } =
+        args;
+      const cancelled = () => cancelledRef.current;
 
-    onStage('analysing');
-    await sleep(ASSUMPTION_VALIDATION_STAGE_DELAY_MS.analysing ?? 1400);
-    if (cancelled()) return;
+      // Await so Allow/Deny settles before stages run (avoids ready racing the prompt).
+      await ensureNotificationPermission();
 
-    onStage('linking');
-    await sleep(ASSUMPTION_VALIDATION_STAGE_DELAY_MS.linking ?? 1000);
-    if (cancelled()) return;
+      onStage('analysing');
+      await sleepInterruptible(STAGE_DELAY_MS.analysing);
+      if (cancelled()) return;
 
-    onStage('ready');
-  }, []);
+      onStage('retrieving');
+      await sleepInterruptible(STAGE_DELAY_MS.retrieving);
+      if (cancelled()) return;
+
+      onStage('citing');
+      if (evidenceFindingIds.length === 0) {
+        await sleepInterruptible(STEP_STAGGER_MS);
+        if (cancelled()) return;
+      } else {
+        for (let i = 0; i < evidenceFindingIds.length; i += 1) {
+          onFindingsRevealed(evidenceFindingIds.slice(0, i + 1));
+          await sleepInterruptible(STEP_STAGGER_MS);
+          if (cancelled()) return;
+        }
+      }
+
+      onStage('drafting');
+      onFindingsRevealed([...evidenceFindingIds, ...otherFindingIds]);
+      await sleepInterruptible(STAGE_DELAY_MS.drafting);
+      if (cancelled()) return;
+
+      onStage('linking');
+      await sleepInterruptible(STAGE_DELAY_MS.linking);
+      if (cancelled()) return;
+
+      onStage('ready');
+      playResponseReadySound();
+      notifyResponseReady({ body: responseBody });
+    },
+    [beginRun, sleepInterruptible],
+  );
+
+  const runRevisionJob = useCallback(
+    async (args: RunRevisionJobArgs) => {
+      beginRun();
+      const { onStart, onDone } = args;
+      onStart();
+      await sleepInterruptible(REVISION_DELAY_MS);
+      if (cancelledRef.current) return;
+      onDone();
+    },
+    [beginRun, sleepInterruptible],
+  );
+
+  const runAssumptionValidationJob = useCallback(
+    async (args: RunAssumptionValidationJobArgs) => {
+      beginRun();
+      const { onStage } = args;
+      const cancelled = () => cancelledRef.current;
+
+      onStage('analysing');
+      await sleepInterruptible(ASSUMPTION_VALIDATION_STAGE_DELAY_MS.analysing ?? 1400);
+      if (cancelled()) return;
+
+      onStage('linking');
+      await sleepInterruptible(ASSUMPTION_VALIDATION_STAGE_DELAY_MS.linking ?? 1000);
+      if (cancelled()) return;
+
+      onStage('ready');
+    },
+    [beginRun, sleepInterruptible],
+  );
 
   const cancelRun = useCallback(() => {
     cancelledRef.current = true;
+    pausedRef.current = false;
+    setAgentPaused(false);
   }, []);
 
-  return { runAnswerJob, runRevisionJob, runAssumptionValidationJob, cancelRun };
+  const pauseAgent = useCallback(() => {
+    pausedRef.current = true;
+    setAgentPaused(true);
+  }, []);
+
+  const resumeAgent = useCallback(() => {
+    pausedRef.current = false;
+    setAgentPaused(false);
+  }, []);
+
+  const toggleAgentPlayback = useCallback(() => {
+    if (pausedRef.current) {
+      pausedRef.current = false;
+      setAgentPaused(false);
+    } else {
+      pausedRef.current = true;
+      setAgentPaused(true);
+    }
+  }, []);
+
+  return {
+    runAnswerJob,
+    runRevisionJob,
+    runAssumptionValidationJob,
+    cancelRun,
+    pauseAgent,
+    resumeAgent,
+    toggleAgentPlayback,
+    agentPaused,
+  };
 }
