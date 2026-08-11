@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquareReply, RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Reply } from 'lucide-react';
 import type { Finding } from '../../types';
 import { getKpi, getSource } from '../../data/mockData';
 import { CitationChip } from './CitationChip';
@@ -76,7 +76,7 @@ export function FindingItem({
             disabled={assumptionAddressed}
             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border-soft bg-ink px-2.5 py-1 text-[11px] font-medium text-surface transition-colors hover:bg-ink/90 disabled:cursor-default disabled:opacity-40"
           >
-            <MessageSquareReply size={11} />
+            <Reply size={11} />
             Reply
           </button>
         </div>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
+  Bell,
   ChevronDown,
   ChevronUp,
   CircleHelp,
   Copy,
+  Pencil,
   RotateCcw,
   Square,
   ThumbsDown,
@@ -139,18 +141,30 @@ function FindingGroup({
   );
 }
 
+const NEXT_STEP_PROMPT =
+  'inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border-soft bg-surface px-3 py-1.5 text-left text-sm font-medium text-ink-soft transition-colors hover:border-border hover:text-ink';
+
+const DRAFT_MAYA_PROMPT = 'Draft message';
+const SET_ALERT_PROMPT = 'Set alert';
+
 function NextBestStepSection({
   validationNeeded,
   notifyTopic,
   notifyRevised,
   nextStepQuestion,
   citations,
+  showActions = false,
+  onDraftMaya,
+  onNotify,
 }: {
   validationNeeded: string | null;
   notifyTopic?: string;
   notifyRevised?: boolean;
   nextStepQuestion?: string;
   citations: Finding[];
+  showActions?: boolean;
+  onDraftMaya?: () => void;
+  onNotify?: () => void;
 }) {
   if (!validationNeeded && !notifyTopic && !nextStepQuestion) return null;
 
@@ -162,11 +176,15 @@ function NextBestStepSection({
         : `Would you like me to notify you on future changes to ${notifyTopic}?`
       : null);
 
+  const showMayaAction = showActions && !!validationNeeded && !!onDraftMaya;
+  const showNotifyAction =
+    showActions && !!notifyTopic && !nextStepQuestion && !!onNotify;
+
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold leading-snug text-ink">Suggested next steps</h2>
       {validationNeeded && (
-        <ul className="list-disc space-y-2 pl-4 text-sm leading-relaxed text-ink">
+        <ul className="list-disc space-y-3 pl-4 text-sm leading-relaxed text-ink">
           <li>
             {validationNeeded.split(/\n\n+/).map((paragraph, index) => (
               <p
@@ -176,10 +194,51 @@ function NextBestStepSection({
                 <SummaryInline text={paragraph} citations={citations} />
               </p>
             ))}
+            {showMayaAction && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={onDraftMaya}
+                  className={NEXT_STEP_PROMPT}
+                >
+                  <Pencil size={14} strokeWidth={2} className="shrink-0" />
+                  <span className="truncate">{DRAFT_MAYA_PROMPT}</span>
+                </button>
+              </div>
+            )}
           </li>
           {notifyTopic && !nextStepQuestion && (
-            <li>Set an alert to monitor future changes in {notifyTopic}.</li>
+            <li>
+              <p>Set an alert to monitor future changes in {notifyTopic}.</p>
+              {showNotifyAction && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={onNotify}
+                    className={NEXT_STEP_PROMPT}
+                  >
+                    <Bell size={14} strokeWidth={2} className="shrink-0" />
+                    <span className="truncate">{SET_ALERT_PROMPT}</span>
+                  </button>
+                </div>
+              )}
+            </li>
           )}
+        </ul>
+      )}
+      {!validationNeeded && notifyTopic && !nextStepQuestion && (
+        <ul className="list-disc space-y-3 pl-4 text-sm leading-relaxed text-ink">
+          <li>
+            <p>Set an alert to monitor future changes in {notifyTopic}.</p>
+            {showNotifyAction && (
+              <div className="mt-2">
+                <button type="button" onClick={onNotify} className={NEXT_STEP_PROMPT}>
+                  <Bell size={14} strokeWidth={2} className="shrink-0" />
+                  <span className="truncate">{SET_ALERT_PROMPT}</span>
+                </button>
+              </div>
+            )}
+          </li>
         </ul>
       )}
       {closingQuestion && (
@@ -332,6 +391,9 @@ export function AnswerSection({
           notifyRevised={notifyRevised}
           nextStepQuestion={answer.nextStepQuestion}
           citations={citations}
+          showActions={showAnswerFooter && !notifyTrace && !notifyConfirmed}
+          onDraftMaya={() => submitQuestion(DRAFT_MAYA_PROMPT)}
+          onNotify={() => submitQuestion(SET_ALERT_PROMPT)}
         />
       )}
 

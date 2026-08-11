@@ -91,7 +91,7 @@ export function InlineCitation({ number, finding }: InlineCitationProps) {
         onMouseLeave={scheduleHide}
         onFocus={show}
         onClick={() => showToast('opening external link')}
-        className="mx-0.5 inline-flex h-4 min-w-4 translate-y-[-1px] items-center justify-center rounded-full bg-ocean-soft px-1 align-baseline text-[10px] font-semibold leading-none text-ocean underline-offset-2 transition-colors hover:bg-ocean hover:text-surface group-hover:underline"
+        className="mx-0.5 inline-flex h-4 min-w-4 translate-y-[-1px] items-center justify-center rounded-full bg-surface-soft px-1 align-baseline text-[10px] font-semibold leading-none text-ink-soft underline-offset-2 transition-colors hover:bg-ink-faint hover:text-ink group-hover:underline"
       >
         {number}
       </button>

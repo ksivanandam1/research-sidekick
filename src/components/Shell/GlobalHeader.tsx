@@ -87,7 +87,7 @@ export function GlobalHeader({ onToggleSidebar }: GlobalHeaderProps) {
           title="R. Alvarez · Revenue analyst"
           className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-sage-soft text-[11px] font-semibold text-sage"
         >
-          RA
+          SK
         </div>
       </div>
     </header>

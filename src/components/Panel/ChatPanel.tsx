@@ -75,20 +75,52 @@ export function ChatPanel() {
   }, []);
 
   const scrollToBottom = useCallback(() => {
+    // Show suggested prompts immediately — they live outside the scroll area and
+    // only render when atBottom is true.
+    setAtBottom(true);
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+
+    const pinToEnd = () => {
+      const node = scrollRef.current;
+      if (!node) return;
+      node.scrollTo({ top: node.scrollHeight, behavior: 'auto' });
+      updateAtBottom();
+    };
+
+    // First jump, then re-pin after prompts expand and shrink the scroll viewport.
+    pinToEnd();
+    requestAnimationFrame(() => {
+      pinToEnd();
+      requestAnimationFrame(pinToEnd);
+    });
+  }, [updateAtBottom]);
+
+  const clampScrollPosition = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+    if (el.scrollTop > maxScroll) {
+      el.scrollTop = maxScroll;
+    }
   }, []);
 
   const scrollLatestQueryIntoView = useCallback(
-    (turnId: string, behavior: ScrollBehavior) => {
+    (turnId: string) => {
       const root = scrollRef.current;
       if (!root) return;
 
       const target = root.querySelector(`[data-user-query="${turnId}"]`);
       if (!(target instanceof HTMLElement)) return;
 
-      target.scrollIntoView({ behavior, block: 'start' });
+      // Pin the query near the top without using scrollIntoView(block: 'start'), which
+      // can extend scrollHeight and leave a large empty region under short replies.
+      const top =
+        target.getBoundingClientRect().top -
+        root.getBoundingClientRect().top +
+        root.scrollTop;
+      const maxScroll = Math.max(0, root.scrollHeight - root.clientHeight);
+      root.scrollTo({ top: Math.min(Math.max(0, top), maxScroll), behavior: 'auto' });
       updateAtBottom();
     },
     [updateAtBottom],
@@ -97,12 +129,15 @@ export function ChatPanel() {
   useLayoutEffect(() => {
     if (!latestTurnId || latestTurnId === lastScrolledTurnId.current) return;
     lastScrolledTurnId.current = latestTurnId;
-    scrollLatestQueryIntoView(latestTurnId, 'auto');
+    scrollLatestQueryIntoView(latestTurnId);
   }, [latestTurnId, scrollLatestQueryIntoView]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Thought-trace / answer content often shrinks when the run finishes — clamp so
+    // we don't sit past the end of the document (looks like a blank "glitched" panel).
+    clampScrollPosition();
     updateAtBottom();
-  }, [turns, updateAtBottom]);
+  }, [turns, clampScrollPosition, updateAtBottom]);
 
   return (
     <div className="flex h-full flex-col">
@@ -120,11 +155,11 @@ export function ChatPanel() {
         <div
           ref={scrollRef}
           onScroll={updateAtBottom}
-          className="h-full overflow-y-auto px-5 py-4"
+          className="h-full overflow-y-auto px-5 py-4 [overflow-anchor:none]"
         >
           {turns.length === 0 && !hasChartContext && <InvestigationEmptyState />}
           {turns.length > 0 && (
-            <div className="flex flex-col gap-4 pb-12">
+            <div className="flex flex-col gap-4 pb-4">
               {priorTurns.map((turn, index) => (
                 <CompactInvestigationStep key={turn.id} turn={turn} stepNumber={index + 1} />
               ))}

@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Mic, Square } from 'lucide-react';
 import { ComposerQuickActionsMenu } from '../ComposerQuickActionsMenu';
-import { isNotifyFollowUp } from '../../data/mockData';
 import { useResearch } from '../../state/ResearchContext';
 import { isAssumptionContext } from '../../types';
 import { ComposerContextStrip } from './ContextTray';
 import { SuggestedQuestions } from './SuggestedQuestions';
 // import { PinTriggerToggle } from './PinTriggerToggle'; // hidden for now — restore when needed
-
-const NOTIFY_YES = 'Yes, please set a notification.';
-const NOTIFY_MAYA = 'What questions should I ask Maya about?';
 
 const promptBtnClass =
   'prompt-rise inline-flex max-w-full items-center rounded-lg border border-border-soft bg-surface px-3 py-1.5 text-left text-sm font-medium text-ink-soft transition-colors hover:border-border hover:text-ink';
@@ -33,7 +29,6 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
     turns,
   } = useResearch();
   const [value, setValue] = useState('');
-  const [notifyDismissedForTurn, setNotifyDismissedForTurn] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeRunTurn =
@@ -51,30 +46,6 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
       : null;
   const showAnswerFollowUps = showPrompts && !!answerFollowUps;
 
-  const notifyTargetTurn = [...turns]
-    .reverse()
-    .find(
-      (t) =>
-        t.stage === 'ready' &&
-        !!t.answer &&
-        !t.archived &&
-        t.phase !== 'clarifying' &&
-        t.activePath.length === 0 &&
-        !t.answer.generatedDocument &&
-        !t.answer.dashboardAlert &&
-        !t.answer.nextStepQuestion &&
-        !(t.answer.followUpPrompts && t.answer.followUpPrompts.length > 0) &&
-        !t.notifyConfirmed &&
-        !t.notifyTrace &&
-        !isNotifyFollowUp(t.question),
-    );
-  const showNotifyPrompts =
-    showPrompts &&
-    !showAnswerFollowUps &&
-    !!notifyTargetTurn &&
-    notifyTargetTurn.id === latestTurn?.id &&
-    notifyDismissedForTurn !== notifyTargetTurn.id;
-
   useEffect(() => {
     if (pendingPrefill) {
       setValue(pendingPrefill);
@@ -91,9 +62,6 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
   function handleSubmit(question?: string) {
     const text = question ?? value;
     if (!text.trim()) return;
-    if (notifyTargetTurn && (text === NOTIFY_YES || text === NOTIFY_MAYA)) {
-      setNotifyDismissedForTurn(notifyTargetTurn.id);
-    }
     submitQuestion(text);
     setValue('');
   }
@@ -113,25 +81,6 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
       {showAttachSuggestions && (
         <div key="attach-prompts" className="mb-2 overflow-hidden">
           <SuggestedQuestions onSelect={(q) => handleSubmit(q)} />
-        </div>
-      )}
-
-      {showNotifyPrompts && (
-        <div key="notify-prompts" className="prompt-stack mb-2 flex flex-col items-end gap-1.5 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => handleSubmit(NOTIFY_YES)}
-            className={promptBtnClass}
-          >
-            <span className="truncate">{NOTIFY_YES}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSubmit(NOTIFY_MAYA)}
-            className={promptBtnClass}
-          >
-            <span className="truncate">{NOTIFY_MAYA}</span>
-          </button>
         </div>
       )}
 

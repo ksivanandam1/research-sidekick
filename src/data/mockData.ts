@@ -269,6 +269,18 @@ export const SOURCES: Record<string, Source> = {
     ],
     url: '#',
   },
+  srcSlackJohnCapacity: {
+    id: 'srcSlackJohnCapacity',
+    name: '#revenue-ops',
+    type: 'chat',
+    timestamp: 'Aug 4',
+    author: 'John Penguin',
+    workspace: 'Revenue Ops',
+    excerpts: [
+      '"Outbound sales capacity was extremely low this quarter. We were understaffed and could not cover the Pro book."',
+    ],
+    url: '#',
+  },
   srcFinancePricing: {
     id: 'srcFinancePricing',
     name: 'Pro Deal Size & Discounting',
@@ -328,16 +340,16 @@ export function getSource(id: string): Source {
 }
 
 const QUERY_VERB: Record<SourceType, string> = {
-  xero: 'Queried Xero',
-  tableau: 'Queried Tableau',
-  chat: 'Checked Slack',
-  doc: 'Checked internal documents',
-  product: 'Queried product analytics',
+  xero: 'Querying Xero',
+  tableau: 'Querying Tableau',
+  chat: 'Checking Slack',
+  doc: 'Checking internal documents',
+  product: 'Querying product analytics',
 };
 
 /**
- * Turns the evidence in an answer into a concrete "what did the agent check"
- * trace — e.g. "Queried Tableau — found APAC renewal rate dropped to 81%" —
+ * Turns the evidence in an answer into a concrete "what the agent is checking"
+ * trace — e.g. "Querying Tableau — finding APAC renewal rate dropped to 81%" —
  * instead of an abstract stage label. Derived from the same scripted findings
  * used elsewhere, so it stays consistent with the citations shown in the answer.
  */
@@ -350,6 +362,47 @@ function forThoughtTrace(text: string): string {
     .trim();
 }
 
+/** Normalize proof-point / detail lines into present-tense thought-trace voice. */
+function toPresentThoughtDetail(text: string): string {
+  let t = text.trim().replace(/^I\s+/i, '');
+  const leading: [RegExp, string][] = [
+    [/^Compared\b/i, 'Comparing'],
+    [/^Broke\b/i, 'Breaking'],
+    [/^Found\b/i, 'Finding'],
+    [/^Split\b/i, 'Splitting'],
+    [/^Checked\b/i, 'Checking'],
+    [/^Reviewed\b/i, 'Reviewing'],
+    [/^Drafted\b/i, 'Drafting'],
+    [/^Linked\b/i, 'Linking'],
+    [/^Pulled\b/i, 'Pulling'],
+    [/^Queried\b/i, 'Querying'],
+    [/^Applied\b/i, 'Applying'],
+    [/^Scoped\b/i, 'Scoping'],
+    [/^Snapshotted\b/i, 'Snapshotting'],
+    [/^Ranked\b/i, 'Ranking'],
+    [/^Cross-checked\b/i, 'Cross-checking'],
+  ];
+  for (const [re, replacement] of leading) {
+    if (re.test(t)) {
+      t = t.replace(re, replacement);
+      break;
+    }
+  }
+  t = t
+    .replace(/\bI dug into\b/gi, 'digging into')
+    .replace(/\bI checked\b/gi, 'checking')
+    .replace(/\bI kept\b/gi, 'keeping')
+    .replace(/\band found\b/g, 'and find')
+    .replace(/\band checked\b/g, 'and checking')
+    .replace(/\bfound\b/g, 'find')
+    .replace(/\bsuggested\b/g, 'suggest')
+    .replace(/\bkept digging\b/g, 'keep digging')
+    .replace(/\bwhich kept\b/g, 'which keeps')
+    .replace(/\bwhich reinforced\b/g, 'which reinforces')
+    .replace(/\breinforced\b/g, 'reinforce');
+  return forThoughtTrace(t);
+}
+
 export function buildThoughtSteps(answer: Answer): ThoughtStep[] {
   return answer.findings
     .filter((f) => f.kind === 'evidence' && f.sourceIds.length > 0)
@@ -360,7 +413,7 @@ export function buildThoughtSteps(answer: Answer): ThoughtStep[] {
         id: `step-${f.id}`,
         findingId: f.id,
         shortText,
-        text: forThoughtTrace(`${shortText}: found ${f.text}`),
+        text: forThoughtTrace(`${shortText}: finding ${f.text}`),
       };
     });
 }
@@ -379,6 +432,31 @@ const REVENUE_Q3_PIPELINE_DEFS: Pick<PipelineThoughtStep, 'id' | 'label' | 'stag
   { id: 'analysing', label: 'Isolating the dip by tier and channel', stage: 'citing' },
   { id: 'drafting', label: 'Drafting the Q3 revenue diagnosis', stage: 'drafting' },
   { id: 'linking', label: 'Linking figures to source reports', stage: 'linking' },
+];
+
+/** Thought trace used when the user replies to an outstanding assumption. */
+const ASSUMPTION_REPLY_THOUGHT_STEPS: PipelineThoughtStep[] = [
+  {
+    id: 'assumption-context',
+    label: 'Updating business context based on assumption',
+    detail:
+      'Folding your confirmation into the working picture carefully — treating it as grounded context, not a leap beyond what you verified.',
+    stage: 'analysing',
+  },
+  {
+    id: 'assumption-inspect',
+    label: 'Inspecting Pro sales YoY',
+    detail:
+      'Looking at Pro sales over the last few years to validate if this delta is significant for Q3 sales',
+    stage: 'retrieving',
+  },
+  {
+    id: 'assumption-confidence',
+    label: 'Updating confidence',
+    detail:
+      "Tightening the insights against our latest analysis. I was able to link John's call out that the sales team capacity for outbound sales was extremely low this quarter due to being understaffed.",
+    stage: 'drafting',
+  },
 ];
 
 function isRevenueQ3Diagnosis(answer: Answer): boolean {
@@ -403,7 +481,7 @@ function extractHowIGotHere(summary: string): string[] {
   const re = /(\d+)\.\s+([\s\S]*?)(?=\n\d+\.\s+|$)/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(section)) !== null) {
-    items.push(forThoughtTrace(match[2].replace(/\[\d+\]/g, '').trim()));
+    items.push(toPresentThoughtDetail(match[2].replace(/\[\d+\]/g, '').trim()));
   }
   return items;
 }
@@ -423,7 +501,7 @@ function buildRetrievalDetail(answer: Answer): string {
     }
   }
   if (lines.length === 0) {
-    return 'Pulled related metrics and source reports for the attached context.';
+    return 'Pulling related metrics and source reports for the attached context.';
   }
   return lines.slice(0, 4).join('. ') + '.';
 }
@@ -431,25 +509,25 @@ function buildRetrievalDetail(answer: Answer): string {
 function buildLinkingDetail(answer: Answer): string {
   const evidence = answer.findings.filter((f) => f.kind === 'evidence' && f.sourceIds.length > 0);
   if (evidence.length === 0) {
-    return 'Linked insight figures back to their source reports.';
+    return 'Linking insight figures back to their source reports.';
   }
   const count = evidence.length;
   return count === 1
-    ? 'Linked the key insight figure back to its source report for citation.'
-    : `Linked ${count} insight figures back to their source reports for citation.`;
+    ? 'Linking the key insight figure back to its source report for citation.'
+    : `Linking ${count} insight figures back to their source reports for citation.`;
 }
 
 function defaultAnalysingDetail(answer: Answer): string {
   const evidence = answer.findings.filter((f) => f.kind === 'evidence');
   if (evidence.length >= 2) {
     return forThoughtTrace(
-      `Compared ${evidence[0].text.split('.')[0]} against ${evidence[1].text.split('.')[0]}.`,
+      `Comparing ${evidence[0].text.split('.')[0]} against ${evidence[1].text.split('.')[0]}.`,
     );
   }
   if (evidence[0]) {
-    return forThoughtTrace(`Reviewed ${evidence[0].text.split('.')[0]}.`);
+    return forThoughtTrace(`Reviewing ${evidence[0].text.split('.')[0]}.`);
   }
-  return 'Compared period-over-period trends and broke the move down by segment.';
+  return 'Comparing period-over-period trends and breaking the move down by segment.';
 }
 
 /**
@@ -469,37 +547,37 @@ export function buildPipelineThoughtSteps(
   const defs = isRevenueQ3 ? REVENUE_Q3_PIPELINE_DEFS : PIPELINE_STEP_DEFS;
 
   const clarifyingDetail = isRevenueQ3
-    ? 'Checked billing one-offs, forecast method, Pro churn, and outbound team changes before diagnosing the Q3 dip.'
+    ? 'Checking billing one-offs, forecast method, Pro churn, and outbound team changes before diagnosing the Q3 dip.'
     : howSteps.length > 0
-      ? 'Applied your clarifying answers before running the diagnosis.'
-      : 'Scoped the question to the attached charts and metrics before retrieving data.';
+      ? 'Applying your clarifying answers before running the diagnosis.'
+      : 'Scoping the question to the attached charts and metrics before retrieving data.';
 
   const analysingDetail = isRevenueQ3
     ? howSteps.length >= 2
       ? `${howSteps[0]} ${howSteps[1]}`
-      : 'Compared Pro QoQ vs YoY, split revenue by tier, and isolated outbound-sourced Pro deals.'
+      : 'Comparing Pro QoQ vs YoY, splitting revenue by tier, and isolating outbound-sourced Pro deals.'
     : howSteps.length >= 2
       ? `${howSteps[0]} ${howSteps[1]}`
       : howSteps[0] ?? defaultAnalysingDetail(answer);
 
   const draftingDetail = isRevenueQ3
     ? howSteps[2] ??
-      'Drafted the read that the Q3 miss is concentrated in outbound Pro, not a broad decline across tiers.'
+      'Drafting the read that the Q3 miss is concentrated in outbound Pro, not a broad decline across tiers.'
     : howSteps[2] ??
       howSteps[howSteps.length - 1] ??
-      'Drafted a plain-language explanation from the evidence gathered.';
+      'Drafting a plain-language explanation from the evidence gathered.';
 
   const retrievedDetailRaw = buildRetrievalDetail(answer);
   const linkingDetailRaw = buildLinkingDetail(answer);
 
   const retrievingDetail =
     isRevenueQ3 &&
-    retrievedDetailRaw === 'Pulled related metrics and source reports for the attached context.'
-      ? 'Queried Xero revenue, SFDC tier and pipeline views, and RevOps notes on outbound Pro.'
+    retrievedDetailRaw === 'Pulling related metrics and source reports for the attached context.'
+      ? 'Querying Xero revenue, SFDC tier and pipeline views, and RevOps notes on outbound Pro.'
       : retrievedDetailRaw;
 
   const linkingDetail = isRevenueQ3
-    ? 'Linked the forecast miss, tier split, and outbound channel cut back to their source reports.'
+    ? 'Linking the forecast miss, tier split, and outbound channel cut back to their source reports.'
     : linkingDetailRaw;
 
   const detailById: Record<string, string> = {
@@ -560,7 +638,9 @@ export function shouldStartClarifying(question: string): boolean {
 
 /** Short follow-ups from notify suggested prompts — skip the full diagnosis flow. */
 export function isNotifyFollowUp(question: string): boolean {
-  return /please (?:notify me|set a notification)|yes.*notify|what questions should i ask maya/i.test(question.trim());
+  return /please (?:notify me|set a notification)|yes.*notify|^set alert\.?$|^draft message(?: to maya)?\.?$|what questions should i ask maya/i.test(
+    question.trim(),
+  );
 }
 
 export function isDraftReportQuestion(question: string): boolean {
@@ -631,35 +711,71 @@ export function resolveAssumptionConfirmAnswer(
 
   if (nextValidated.includes('revenue-a1')) {
     updatedBody = updatedBody.replace(
-      '3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].',
-      '3. I split Pro by channel and checked deal size — you confirmed the self-serve vs outbound mix did not shift enough to explain the miss. Volume is down, pricing is stable[4].',
+      '3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
+      '3. Split Pro by channel and checked deal size. You confirmed the self-serve vs outbound mix did not shift enough to explain the miss. Volume is down, pricing is stable[4].',
     );
   }
   if (nextValidated.includes('revenue-a2')) {
     updatedBody = updatedBody.replace(
-      '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%) — the gap suggested partial seasonality, so I kept digging.',
-      '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%). You confirmed seasonality is not the driver — this looks like a real shift, not a cyclical dip.',
+      '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggested partial seasonality, so digging continued.',
+      '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). You confirmed seasonality is not the driver. This looks like a real shift, not a cyclical dip.',
     );
   }
 
+  const johnEvidence = {
+    id: 'revenue-john-capacity',
+    kind: 'evidence' as const,
+    metricId: 'revenue' as const,
+    text: 'John noted in Slack that outbound sales capacity was extremely low this quarter due to understaffing.',
+    sourceIds: ['srcSlackJohnCapacity'],
+  };
+  // Keep John after core revenue evidence so the Slack cite stays early in the list.
+  const coreEvidence = findings.filter((f) => f.id.startsWith('revenue-e'));
+  const restFindings = findings.filter((f) => !f.id.startsWith('revenue-e'));
+  const findingsWithJohn = [...coreEvidence, johnEvidence, ...restFindings];
+  const johnCite =
+    findingsWithJohn.filter((f) => f.kind === 'evidence').findIndex((f) => f.id === johnEvidence.id) +
+    1;
+
+  // Elevate John's Slack staffing callout once assumptions have been checked.
+  updatedBody = updatedBody
+    .replace(
+      '### Validation needed',
+      '### What explains the outbound miss',
+    )
+    .replace(
+      "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
+      `**John flagged in Slack** that **outbound sales capacity was extremely low this quarter because the team was understaffed**[${johnCite}]. That lines up with outbound-sourced Pro nearly halving, and reframes the miss as a **staffing / coverage** story rather than a pricing or product one.`,
+    )
+    .replace(
+      "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
+      `**John flagged in Slack** that **outbound sales capacity was extremely low this quarter because the team was understaffed**[${johnCite}]. That lines up with outbound-sourced Pro nearly halving, and reframes the miss as a **staffing / coverage** story rather than a pricing or product one.`,
+    )
+    .replace(
+      '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting**. Volume is visible, but not the activity behind it',
+      '- Whether understaffing was temporary (hiring lag) or a lasting coverage gap for the Pro book',
+    );
+
   const refreshIntro =
     remaining > 0
-      ? "I've refreshed the analysis below with your validated assumptions."
-      : "I've refreshed the analysis with your validated assumptions.";
+      ? "I've refreshed the analysis below with your validated assumptions, including John's Slack note on outbound understaffing."
+      : "I've refreshed the analysis with your validated assumptions. John's Slack note on outbound understaffing is now part of the story.";
 
   return {
     confidence: 'high',
     summary: [ack, '---', refreshIntro, '---', updatedBody].join('\n\n'),
-    pinSummary: source.pinSummary,
-    findings,
+    pinSummary:
+      'Outbound Pro miss ties to understaffed sales capacity (per John in Slack), not a broad decline.',
+    findings: findingsWithJohn,
     chart: source.chart,
     generatedDocument: source.generatedDocument,
+    thoughtSteps: ASSUMPTION_REPLY_THOUGHT_STEPS,
   };
 }
 
 export function resolveNotifyFollowUp(question: string, metricTitle = 'Revenue'): Answer {
   const topic = metricTitle.toLowerCase();
-  if (/please (?:notify me|set a notification)|yes.*notify/i.test(question)) {
+  if (/please (?:notify me|set a notification)|yes.*notify|^set alert\.?$/i.test(question)) {
     return {
       summary: `Got it — I've added an alert to the dashboard to monitor **${topic}** this quarter. I'll notify you when it moves meaningfully. You can review or turn this off anytime from **Manage alerts**.`,
       findings: [],
@@ -684,7 +800,7 @@ export function resolveNotifyFollowUp(question: string, metricTitle = 'Revenue')
       },
     };
   }
-  if (/what questions should i ask maya/i.test(question)) {
+  if (/^draft message(?: to maya)?\.?$|what questions should i ask maya/i.test(question)) {
     return {
       summary: [
         'Start with these three questions for **Maya Chen in RevOps**:',
@@ -797,17 +913,17 @@ export const REVENUE_DIP_ANSWER: Answer = {
     '### Validation needed',
     "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
     '### Proof points and evidence',
-    '1. I compared Pro sales QoQ (down 12%) with YoY (down 3%) — the gap suggested partial seasonality, so I kept digging.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].',
+    '1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). The gap suggested partial seasonality, so digging continued.\n2. Broke revenue down by tier and found only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].',
     'We were able to diagnose the segment based on your tier and channel data.',
     '### Unknowns',
     [
-      '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting** — volume is visible, but not the activity behind it',
+      '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting**. Volume is visible, but not the activity behind it',
       '- Pipeline stage conversion for outbound-sourced Pro (activity data not accessible)',
       '- Whether competitor pressure, messaging, or territory coverage contributed to the miss',
     ].join('\n'),
   ].join('\n\n'),
   pinSummary:
-    'Q3 missed forecast by 12%, but the drop is outbound Pro — not a broad decline across tiers.',
+    'Q3 missed forecast by 12%, but the drop is outbound Pro, not a broad decline across tiers.',
   findings: [
     {
       id: 'revenue-e1',
@@ -1166,33 +1282,41 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
     id: findingId === 'revenue-a2' ? 'revenue-a2' : findingId,
     kind: 'evidence',
     metricId: 'revenue',
-    text: 'Prior Q3s show only mild ~2% YoY decreases — Pro has held steady in Q3 for several years, so seasonality does not explain this gap.',
+    text: 'Prior Q3s show only mild ~2% YoY decreases. Pro has held steady in Q3 for several years, so seasonality does not explain this gap.',
     sourceIds: ['srcFinanceRevenue'],
     revised: true,
-    revisedNote: 'Revised based on your feedback — upgraded from Assumption to Evidence.',
+    revisedNote: 'Revised based on your feedback. Upgraded from Assumption to Evidence.',
+  };
+
+  const johnCapacity: Finding = {
+    id: 'clarified-john-capacity',
+    kind: 'evidence',
+    metricId: 'revenue',
+    text: "John Penguin announced in Slack that outbound sales capacity was extremely low this quarter due to understaffing.",
+    sourceIds: ['srcSlackJohnCapacity'],
   };
 
   return {
     confidence: 'high',
     summary: [
-      "Thanks for this clarification! I've rewritten the insights with the context that previous years have been consistent with only a mild 2% decreases YoY.",
+      "Thanks for this clarification! I've rewritten the insights with seasonality ruled out. I found **John Penguin's** announcement that outbound sales was understaffed this quarter.",
       '---',
-      '## The Q3 revenue dip is concentrated in one segment, not a broad decline',
-      'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to one place: **outbound-sourced Pro deals, down about 50%**[3].',
-      '### Validation needed',
-      "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
+      '## The Q3 miss is outbound Pro, driven by understaffed sales capacity',
+      'Q3 came in at **$2.1M vs. $2.4M forecast, a 12% miss**. Year on year it is only **down 3%**[1]. Starter, Growth, and Pro self-serve have not dipped[2]. The entire drop traces to **outbound-sourced Pro deals, down about 50%**[3].',
+      '### What explains the outbound miss',
+      "**John Penguin announced in Slack** that **outbound sales capacity was extremely low this quarter because the team was understaffed**[5]. That matches the volume drop in outbound Pro and reframes the miss as a **staffing / coverage** story, not a pricing or broad demand collapse.",
       '### Proof points and evidence',
-      "1. I compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap — this looks like a real shift, not a cyclical dip.\n2. I broke revenue down by tier and found only Pro moved, down 34%.\n3. I split Pro by channel and checked deal size — volume is down, pricing is stable[4].",
-      'We were able to diagnose the segment based on your tier and channel data.',
+      "1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap. This looks like a real shift, not a cyclical dip.\n2. Broke revenue down by tier and found only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].\n4. John Penguin's Slack announcement ties the outbound miss to understaffed sales capacity this quarter[5].",
+      "We were able to diagnose the segment based on your tier and channel data, plus John Penguin's staffing context.",
       '### Unknowns',
       [
-        '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting** — volume is visible, but not the activity behind it',
+        '- Whether understaffing was temporary (hiring lag) or a lasting coverage gap for the Pro book',
         '- Pipeline stage conversion for outbound-sourced Pro (activity data not accessible)',
-        '- Whether competitor pressure, messaging, or territory coverage contributed to the miss',
+        '- Whether competitor pressure or messaging also contributed once coverage thinned',
       ].join('\n'),
     ].join('\n\n'),
     pinSummary:
-      'Seasonality ruled out — Q3 miss is outbound Pro, not a cyclical dip.',
+      'Seasonality ruled out. Outbound Pro miss ties to understaffed sales capacity (John Penguin).',
     findings: [
       {
         id: 'clarified-e1',
@@ -1222,6 +1346,7 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
         text: 'Pro closed-won count is down while median ACV and discount rate are stable, pointing to a volume problem not a value problem.',
         sourceIds: ['srcFinancePricing'],
       },
+      johnCapacity,
       revisedSeasonality,
       {
         id: 'clarified-a1',
@@ -1232,6 +1357,15 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
         sourceIds: [],
       },
     ],
+    thoughtSteps: ASSUMPTION_REPLY_THOUGHT_STEPS.map((step) =>
+      step.id === 'assumption-context'
+        ? {
+            ...step,
+            detail:
+              'Folding your clarification into the working picture. Now that seasonality is not the issue, I noticed that Pro sales has dropped significantly compared to last quarter.',
+          }
+        : step,
+    ),
   };
 }
 

@@ -288,7 +288,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
         const metricTitle = metricIds[0] ? getKpi(metricIds[0]).title : 'Revenue';
         const topic = metricTitle.toLowerCase();
 
-        if (/please (?:notify me|set a notification)|yes.*notify/i.test(trimmed)) {
+        if (/please (?:notify me|set a notification)|yes.*notify|^set alert\.?$/i.test(trimmed)) {
           if (!priorTurn?.answer) return;
 
           dispatch({
