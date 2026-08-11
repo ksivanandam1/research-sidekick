@@ -277,6 +277,8 @@ export interface PipelineThoughtStep {
   label: string;
   detail: string;
   stage: Stage;
+  /** Optional sources to show as pills under this step (e.g. Slack). */
+  sourceIds?: string[];
 }
 
 export interface SavedCheck {

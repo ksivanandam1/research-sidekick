@@ -182,7 +182,7 @@ function NextBestStepSection({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold leading-snug text-ink">Suggested next steps</h2>
+      <h2 className="pt-2 text-lg font-semibold leading-snug text-ink">Suggested next steps</h2>
       {validationNeeded && (
         <ul className="list-disc space-y-3 pl-4 text-sm leading-relaxed text-ink">
           <li>

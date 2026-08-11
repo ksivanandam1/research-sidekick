@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Lock, OctagonX } from 'lucide-react';
 import type { Answer, ClarifyingRound, Source, Stage, TurnPhase } from '../../types';
-import { buildPipelineThoughtSteps, getAllSourcesForAnswer } from '../../data/mockData';
+import { buildPipelineThoughtSteps, getAllSourcesForAnswer, getSource } from '../../data/mockData';
 import { getStepStatusForThoughtTrace } from '../../utils/thoughtTraceTitle';
 import { ClarifyingHistory } from './ClarifyingQuestions';
 import { MoonLoader } from './MoonLoader';
@@ -278,8 +278,10 @@ export function ThoughtTrace({ stage, answer, stopped, clarifying, phase }: Thou
       <div className="flex flex-col gap-1.5 border-l border-border-soft pl-3">
         {visibleRows.map((row) => {
           const showClarifyingHistory = row.id === 'clarifying' && !!clarifying;
-          const showSourcePills =
-            row.id === 'retrieving' && citationSources.length > 0 && !showClarifyingHistory;
+          const stepSources =
+            row.sourceIds?.map((id) => getSource(id)).filter(Boolean) ??
+            (row.id === 'retrieving' && !showClarifyingHistory ? citationSources : []);
+          const showSourcePills = stepSources.length > 0;
           // While running, the active step's description sits under the header — don't
           // duplicate it on that row. Once complete, every step shows its description.
           const hideDetail = !analysisComplete && row.id === activeRow.id;
@@ -302,7 +304,7 @@ export function ThoughtTrace({ stage, answer, stopped, clarifying, phase }: Thou
               {showClarifyingHistory ? (
                 <ClarifyingHistory clarifying={clarifying} />
               ) : showSourcePills ? (
-                <SourcePills sources={citationSources} />
+                <SourcePills sources={stepSources} />
               ) : null}
             </ThoughtStepRow>
           );

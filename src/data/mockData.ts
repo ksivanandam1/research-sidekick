@@ -456,6 +456,7 @@ const ASSUMPTION_REPLY_THOUGHT_STEPS: PipelineThoughtStep[] = [
     detail:
       "Tightening the insights against our latest analysis. I was able to link John's call out that the sales team capacity for outbound sales was extremely low this quarter due to being understaffed.",
     stage: 'drafting',
+    sourceIds: ['srcSlackJohnCapacity'],
   },
 ];
 
@@ -737,19 +738,24 @@ export function resolveAssumptionConfirmAnswer(
     findingsWithJohn.filter((f) => f.kind === 'evidence').findIndex((f) => f.id === johnEvidence.id) +
     1;
 
-  // Elevate John's Slack staffing callout once assumptions have been checked.
+  // Elevate John's Slack staffing callout, and keep Maya under Validation needed
+  // so Suggested next steps still offers Draft message.
+  const johnSection = `### What explains the outbound miss\n\n**John flagged in Slack** that **outbound sales capacity was extremely low this quarter because the team was understaffed**[${johnCite}]. That lines up with outbound-sourced Pro nearly halving, and reframes the miss as a **staffing / coverage** story rather than a pricing or product one.`;
+  const mayaNextStep =
+    "**Talk to Maya Chen in RevOps** and confirm whether understaffing is temporary, and whether **first meetings** are converting once coverage recovers.\n\nJohn's note explains capacity; Maya can validate the recovery plan.";
+
   updatedBody = updatedBody
     .replace(
       '### Validation needed',
-      '### What explains the outbound miss',
+      `${johnSection}\n\n### Validation needed`,
     )
     .replace(
       "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound sourced pro deals but wasn't able to see the pipeline activity behind them.",
-      `**John flagged in Slack** that **outbound sales capacity was extremely low this quarter because the team was understaffed**[${johnCite}]. That lines up with outbound-sourced Pro nearly halving, and reframes the miss as a **staffing / coverage** story rather than a pricing or product one.`,
+      mayaNextStep,
     )
     .replace(
       "**Talk to Maya Chen in RevOps** and ask whether **outbound capacity dropped in Q3**, or whether **first meetings stopped converting**. That answer decides if this is a headcount problem or a conversion problem.\n\nI was able to access the volume of outbound-sourced Pro deals but wasn't able to see the pipeline activity behind them.",
-      `**John flagged in Slack** that **outbound sales capacity was extremely low this quarter because the team was understaffed**[${johnCite}]. That lines up with outbound-sourced Pro nearly halving, and reframes the miss as a **staffing / coverage** story rather than a pricing or product one.`,
+      mayaNextStep,
     )
     .replace(
       '- Whether **outbound capacity dropped in Q3** or **first meetings stopped converting**. Volume is visible, but not the activity behind it',
@@ -803,12 +809,36 @@ export function resolveNotifyFollowUp(question: string, metricTitle = 'Revenue')
   if (/^draft message(?: to maya)?\.?$|what questions should i ask maya/i.test(question)) {
     return {
       summary: [
-        'Start with these three questions for **Maya Chen in RevOps**:',
-        '1. Did **outbound capacity drop in Q3** — fewer reps or territories reshuffled mid-quarter?',
-        '2. Are **first meetings still converting** at the same rate, or did the funnel tighten?',
-        '3. Was there any **change to quotas or comp** that would explain the outbound Pro miss?',
+        'Draft ready to send to **Maya Chen in RevOps**:',
+        '---',
+        '**To:** Maya Chen (RevOps)',
+        '**Subject:** Q3 outbound Pro miss: capacity and conversion check',
+        'Hi Maya,',
+        "We're looking into the Q3 revenue miss, and it looks concentrated in outbound-sourced Pro. Before we go further, could you help with a few questions?",
+        [
+          '1. Did **outbound capacity drop in Q3**, with fewer reps or territories reshuffled mid-quarter?',
+          '2. Are **first meetings still converting** at the same rate, or did the funnel tighten?',
+          '3. Was there any **change to quotas or comp** that would explain the outbound Pro miss?',
+        ].join('\n'),
+        'Happy to jump on a quick call if easier.',
+        'Thanks,',
       ].join('\n\n'),
+      pinSummary: 'Draft email to Maya Chen on Q3 outbound Pro capacity and conversion.',
       findings: [],
+      thoughtSteps: [
+        {
+          id: 'draft-scope',
+          label: 'Scoping the ask for Maya',
+          detail: 'Pulling the open questions that need RevOps input on the outbound Pro miss.',
+          stage: 'analysing',
+        },
+        {
+          id: 'draft-compose',
+          label: 'Drafting the email',
+          detail: 'Writing a short, send-ready note Maya can answer without extra context hunting.',
+          stage: 'drafting',
+        },
+      ],
     };
   }
   return {
@@ -1308,6 +1338,8 @@ export function resolveClarificationAnswer(_clarification: string, findingId: st
       '### Proof points and evidence',
       "1. Compared Pro sales QoQ (down 12%) with YoY (down 3%). Pro revenue has held steady in Q3 for the past several years, so seasonality doesn't explain the gap. This looks like a real shift, not a cyclical dip.\n2. Broke revenue down by tier and found only Pro moved, down 34%.\n3. Split Pro by channel and checked deal size. Volume is down, pricing is stable[4].\n4. John Penguin's Slack announcement ties the outbound miss to understaffed sales capacity this quarter[5].",
       "We were able to diagnose the segment based on your tier and channel data, plus John Penguin's staffing context.",
+      '### Validation needed',
+      "**Talk to Maya Chen in RevOps** and confirm whether understaffing is temporary, and whether **first meetings** are converting once coverage recovers.\n\nJohn Penguin's note explains capacity; Maya can validate the recovery plan.",
       '### Unknowns',
       [
         '- Whether understaffing was temporary (hiring lag) or a lasting coverage gap for the Pro book',

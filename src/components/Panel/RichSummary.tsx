@@ -52,7 +52,7 @@ function renderBlock(block: string, key: number, citations: Finding[]) {
   }
   if (trimmed.startsWith('### ')) {
     return (
-      <h3 key={key} className="text-sm font-semibold leading-snug text-ink">
+      <h3 key={key} className="pt-2 text-base font-semibold leading-snug text-ink">
         {renderInline(trimmed.slice(4), citations)}
       </h3>
     );
