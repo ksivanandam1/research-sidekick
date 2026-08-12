@@ -136,12 +136,16 @@ export function researchReducer(state: SessionState, action: SessionAction): Ses
           ? state.attachedContext.some(
               (item) => item.kind === 'assumption' && item.findingId === incoming.findingId,
             )
-          : state.attachedContext.some(
-              (item) =>
-                item.kind === 'chart' &&
-                item.id === incoming.id &&
-                item.timeframeLabel === incoming.timeframeLabel,
-            );
+          : incoming.kind === 'excerpt'
+            ? state.attachedContext.some(
+                (item) => item.kind === 'excerpt' && item.text === incoming.text,
+              )
+            : state.attachedContext.some(
+                (item) =>
+                  item.kind === 'chart' &&
+                  item.id === incoming.id &&
+                  item.timeframeLabel === incoming.timeframeLabel,
+              );
       if (exists) return state;
       return { ...state, attachedContext: [incoming, ...state.attachedContext] };
     }

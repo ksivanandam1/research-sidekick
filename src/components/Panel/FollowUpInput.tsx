@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Mic, Square } from 'lucide-react';
 import { ComposerQuickActionsMenu } from '../ComposerQuickActionsMenu';
 import { useResearch } from '../../state/ResearchContext';
-import { isAssumptionContext } from '../../types';
+import { isAssumptionContext, isExcerptContext } from '../../types';
 import { ComposerContextStrip } from './ContextTray';
 import { SuggestedQuestions } from './SuggestedQuestions';
 // import { PinTriggerToggle } from './PinTriggerToggle'; // hidden for now — restore when needed
@@ -54,7 +54,10 @@ export function FollowUpInput({ showPrompts = true }: FollowUpInputProps) {
   }, [pendingPrefill, consumePrefill]);
 
   useEffect(() => {
-    if (attachedContext.some(isAssumptionContext)) {
+    if (
+      attachedContext.some(isAssumptionContext) ||
+      attachedContext.some(isExcerptContext)
+    ) {
       inputRef.current?.focus();
     }
   }, [attachedContext]);

@@ -36,7 +36,21 @@ export interface AssumptionAttachedContextItem {
   text: string;
 }
 
-export type AttachedContextItem = ChartAttachedContextItem | AssumptionAttachedContextItem;
+/** Text excerpt from an agent answer attached so the user can ask about it. */
+export interface ExcerptAttachedContextItem {
+  kind: 'excerpt';
+  instanceId: string;
+  title: string;
+  /** Secondary line on the chip, e.g. "From agent response". */
+  subtitle: string;
+  text: string;
+  sourceTurnId: string;
+}
+
+export type AttachedContextItem =
+  | ChartAttachedContextItem
+  | AssumptionAttachedContextItem
+  | ExcerptAttachedContextItem;
 
 export function isChartContext(item: AttachedContextItem): item is ChartAttachedContextItem {
   return item.kind === 'chart';
@@ -44,6 +58,10 @@ export function isChartContext(item: AttachedContextItem): item is ChartAttached
 
 export function isAssumptionContext(item: AttachedContextItem): item is AssumptionAttachedContextItem {
   return item.kind === 'assumption';
+}
+
+export function isExcerptContext(item: AttachedContextItem): item is ExcerptAttachedContextItem {
+  return item.kind === 'excerpt';
 }
 
 export interface SeriesPoint {

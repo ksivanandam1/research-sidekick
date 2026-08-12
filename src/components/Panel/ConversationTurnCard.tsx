@@ -40,6 +40,13 @@ function TurnContextNote({ turn }: { turn: ConversationTurn }) {
               timeframeLabel={item.subtitle}
               variant="assumption"
             />
+          ) : item.kind === 'excerpt' ? (
+            <ComposerContextCard
+              key={item.instanceId}
+              title={item.title}
+              timeframeLabel={item.subtitle}
+              variant="excerpt"
+            />
           ) : (
             <ComposerContextCard
               key={item.instanceId}

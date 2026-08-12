@@ -10,7 +10,11 @@ import type {
   ResponseFeedback,
   SavedCheck,
 } from '../types';
-import { isAssumptionContext, isChartContext } from '../types';
+import {
+  isAssumptionContext,
+  isChartContext,
+  type ExcerptAttachedContextItem,
+} from '../types';
 import { useAgentRun } from '../hooks/useAgentRun';
 import { initialSessionState, researchReducer } from './researchReducer';
 import {
@@ -61,6 +65,7 @@ interface ResearchContextValue {
     opts: { timeframeLabel: string; prefill?: string },
   ) => void;
   replyToAssumption: (turnId: string, finding: Finding) => void;
+  attachExcerpt: (args: { text: string; sourceTurnId: string }) => void;
   removeContext: (instanceId: string) => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -180,6 +185,25 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_PANEL_OPEN', open: true });
     },
     [state.turns],
+  );
+
+  const attachExcerpt = useCallback(
+    (args: { text: string; sourceTurnId: string }) => {
+      const text = args.text.trim();
+      if (!text) return;
+      const charts = state.attachedContext.filter(isChartContext);
+      const item: ExcerptAttachedContextItem = {
+        kind: 'excerpt',
+        instanceId: nextId('ctx'),
+        title: truncateLabel(text, 48),
+        subtitle: 'From agent response',
+        text,
+        sourceTurnId: args.sourceTurnId,
+      };
+      dispatch({ type: 'SET_ATTACHED_CONTEXT', items: [...charts, item] });
+      dispatch({ type: 'SET_PANEL_OPEN', open: true });
+    },
+    [state.attachedContext],
   );
 
   const removeContext = useCallback(
@@ -576,6 +600,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       setPinTrigger,
       addContext,
       replyToAssumption,
+      attachExcerpt,
       removeContext,
       openPanel,
       closePanel,
@@ -602,6 +627,7 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
       state,
       addContext,
       replyToAssumption,
+      attachExcerpt,
       removeContext,
       openPanel,
       closePanel,

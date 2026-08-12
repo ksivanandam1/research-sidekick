@@ -32,6 +32,7 @@ import { DashboardAlertCard } from './DashboardAlertCard';
 import { ExportReviewModal } from './ExportReviewModal';
 import { ResponseFeedbackModal } from './ResponseFeedbackModal';
 import { ThoughtTrace } from './ThoughtTrace';
+import { AskAboutSelection } from './AskAboutSelection';
 import { readAloud, stopReadAloud, toSpeechText } from '../../utils/readAloud';
 import { splitUnknownsFromSummary, splitValidationFromSummary } from '../../utils/summarySections';
 
@@ -348,9 +349,13 @@ export function AnswerSection({
           <ConfidenceBadge level={displayConfidence} />
         )}
         {summaryVisible ? (
-          <>
+          showAnswerFooter && isReady && !archived && turn ? (
+            <AskAboutSelection sourceTurnId={turn.id} enabled>
+              <RichSummary text={summaryText} citations={citations} />
+            </AskAboutSelection>
+          ) : (
             <RichSummary text={summaryText} citations={citations} />
-          </>
+          )
         ) : (
           <div className="flex flex-col gap-2">
             <SkeletonLine width="92%" />

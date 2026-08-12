@@ -6,6 +6,7 @@ import {
   Flag,
   LineChart,
   PieChart,
+  Quote,
   X,
 } from 'lucide-react';
 import type { ContextChartKind } from '../../types';
@@ -60,13 +61,13 @@ interface ComposerContextCardProps {
   title: string;
   timeframeLabel: string;
   chartKind?: ContextChartKind;
-  variant?: 'chart' | 'assumption';
+  variant?: 'chart' | 'assumption' | 'excerpt';
   onRemove?: () => void;
   dimmed?: boolean;
   compact?: boolean;
 }
 
-/** Mockup-style chart / assumption context card for the composer and investigation header. */
+/** Mockup-style chart / assumption / excerpt context card for the composer and investigation header. */
 export function ComposerContextCard({
   title,
   timeframeLabel,
@@ -89,6 +90,8 @@ export function ComposerContextCard({
       >
         {variant === 'assumption' ? (
           <Flag size={compact ? 12 : 14} strokeWidth={2} className="text-amber" />
+        ) : variant === 'excerpt' ? (
+          <Quote size={compact ? 12 : 14} strokeWidth={2} className="text-ink" />
         ) : (
           <ChartKindIcon kind={chartKind} compact={compact} />
         )}
